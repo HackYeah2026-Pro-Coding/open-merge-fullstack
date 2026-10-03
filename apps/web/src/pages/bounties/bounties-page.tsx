@@ -1,4 +1,4 @@
-import { useOrganization, useStats } from '@/api/queries';
+import { useOrganization, useSession, useStats } from '@/api/queries';
 import { Container, PageHeader } from '@/components/layout/container';
 import { BountyBrowser } from '@/components/bounty/bounty-browser';
 import { Amount } from '@/components/common/amount';
@@ -7,11 +7,21 @@ import { Skeleton } from '@/components/ui/skeleton';
 export function BountiesPage() {
   const organization = useOrganization();
   const stats = useStats();
+  const session = useSession();
+  const isMaintainer = session.data?.user?.role === 'maintainer';
 
   return (
     <Container>
       <PageHeader
-        title="Your repositories"
+        title={
+          session.isPending ? (
+            <span aria-hidden className="inline-block h-8 w-64 animate-pulse rounded-sm bg-surface-2 align-middle" />
+          ) : isMaintainer ? (
+            'Your repositories'
+          ) : (
+            'Browse repositories'
+          )
+        }
         description={
           <>
             Solve issues across the{' '}
