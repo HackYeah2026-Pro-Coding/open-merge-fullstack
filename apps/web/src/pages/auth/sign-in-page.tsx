@@ -3,6 +3,7 @@ import { ArrowRight, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useProject, useSession, useSignIn } from '@/api/queries';
 import { useOwnerViewAction } from '@/app/session-actions';
+import { cn } from '@/lib/cn';
 import { env } from '@/lib/env';
 import { Container } from '@/components/layout/container';
 import { Avatar } from '@/components/ui/avatar';
@@ -10,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { GithubIcon } from '@/components/common/icons';
 import { LogoMark } from '@/components/common/logo';
+import { signInErrorMessage } from './sign-in-errors';
 
 /** Only same-site paths are honoured, so `next` cannot bounce someone to another origin. */
 function safeNext(raw: string | null): string {
@@ -48,6 +50,8 @@ function OwnerOption({ disabled }: { disabled: boolean }) {
 export function SignInPage() {
   const [params] = useSearchParams();
   const next = safeNext(params.get('next'));
+  // Set by the API when GitHub sign-in comes back without a session.
+  const error = signInErrorMessage(params.get('error'));
   const session = useSession();
   const project = useProject();
   const signIn = useSignIn();
@@ -79,10 +83,21 @@ export function SignInPage() {
           Your GitHub account identifies you on pull requests, so a merge can be matched to the right payout.
         </p>
 
+        {error && (
+          <p role="alert" className="mt-8 rounded-md border border-danger/30 bg-danger/5 px-4 py-3 text-ui text-fg">
+            {error}
+          </p>
+        )}
         {session.isPending ? (
-          <Skeleton className="mt-8 h-11 w-full" />
+          <Skeleton className={cn('mt-8 h-11 w-full', error && 'mt-4')} />
         ) : (
-          <Button variant="primary" size="lg" className="mt-8 w-full" onClick={onSignIn} pending={signIn.isPending}>
+          <Button
+            variant="primary"
+            size="lg"
+            className={cn('mt-8 w-full', error && 'mt-4')}
+            onClick={onSignIn}
+            pending={signIn.isPending}
+          >
             {!signIn.isPending && <GithubIcon className="size-[18px]" />}
             Continue with GitHub
           </Button>

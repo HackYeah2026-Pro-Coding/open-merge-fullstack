@@ -13,8 +13,14 @@ export const envSchema = z.object({
   // image URL. In production it must be reachable from outside.
   API_URL: z.string().url().default('http://localhost:3000'),
 
-  // Signs wallet-link challenges. Required in production; development falls back to a fixed value.
+  // Signing secrets. Required in production; development falls back to fixed values.
   WALLET_CHALLENGE_SECRET: z.string().min(32).or(z.literal('')).optional(),
+  SESSION_SECRET: z.string().min(32).or(z.literal('')).optional(),
+
+  // GitHub OAuth App for developer sign-in. Required in production; in development
+  // the API still boots without them and sign-in answers 503 until they are set.
+  GITHUB_CLIENT_ID: z.string().optional(),
+  GITHUB_CLIENT_SECRET: z.string().optional(),
 
   // Which database to talk to. The URLs live side by side so switching is a
   // one-word edit, never a connection-string edit. See src/config/database-url.ts.
@@ -24,11 +30,27 @@ export const envSchema = z.object({
   SUPABASE_DIRECT_URL: z.string().optional(),
 });
 
+type Resolved = 'WALLET_CHALLENGE_SECRET' | 'SESSION_SECRET' | 'GITHUB_CLIENT_ID' | 'GITHUB_CLIENT_SECRET';
+
 /** DATABASE_URL is derived from DB_TARGET rather than set directly. */
-export type Env = Omit<z.infer<typeof envSchema>, 'WALLET_CHALLENGE_SECRET'> & {
+export type Env = Omit<z.infer<typeof envSchema>, Resolved> & {
   DATABASE_URL: string;
   WALLET_CHALLENGE_SECRET: string;
+  SESSION_SECRET: string;
+  GITHUB_CLIENT_ID?: string;
+  GITHUB_CLIENT_SECRET?: string;
 };
+
+function configError(issue: string): Error {
+  return new Error(`Invalid environment configuration:\n  ${issue}\n\nSee .env.example.`);
+}
+
+/** A signing secret, or a fixed development-only value outside production. */
+function secretOrFallback(name: string, value: string | undefined, production: boolean): string {
+  if (value) return value;
+  if (production) throw configError(`${name}: required in production (min 32 chars)`);
+  return `development-only-${name.toLowerCase().replaceAll('_', '-')}`;
+}
 
 export function validateEnv(raw: Record<string, unknown>): Env {
   const result = envSchema.safeParse(raw);
@@ -41,14 +63,24 @@ export function validateEnv(raw: Record<string, unknown>): Env {
 
   // Throws with an actionable message naming the variable that is missing.
   const DATABASE_URL = resolveDatabaseUrl(raw as Record<string, string | undefined>);
-  const { WALLET_CHALLENGE_SECRET: secret, ...rest } = result.data;
-  const WALLET_CHALLENGE_SECRET = secret || undefined;
-  if (!WALLET_CHALLENGE_SECRET && rest.NODE_ENV === 'production') {
-    throw new Error('Invalid environment configuration:\n  WALLET_CHALLENGE_SECRET: required in production (min 32 chars)\n\nSee .env.example.');
+  const { WALLET_CHALLENGE_SECRET, SESSION_SECRET, GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET, ...rest } = result.data;
+  const production = rest.NODE_ENV === 'production';
+
+  const clientId = GITHUB_CLIENT_ID?.trim() || undefined;
+  const clientSecret = GITHUB_CLIENT_SECRET?.trim() || undefined;
+  if (!clientId !== !clientSecret) {
+    throw configError('GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET: set both or neither');
   }
+  if (production && !clientId) {
+    throw configError('GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET: required in production');
+  }
+
   return {
     ...rest,
     DATABASE_URL,
-    WALLET_CHALLENGE_SECRET: WALLET_CHALLENGE_SECRET ?? 'development-only-wallet-challenge-secret',
+    WALLET_CHALLENGE_SECRET: secretOrFallback('WALLET_CHALLENGE_SECRET', WALLET_CHALLENGE_SECRET, production),
+    SESSION_SECRET: secretOrFallback('SESSION_SECRET', SESSION_SECRET, production),
+    GITHUB_CLIENT_ID: clientId,
+    GITHUB_CLIENT_SECRET: clientSecret,
   };
 }

@@ -20,3 +20,11 @@ services:
       # Origin of the deployed frontend, for CORS.
       - key: WEB_ORIGIN
         sync: false
+      # Production GitHub OAuth App; its callback is <WEB_ORIGIN>/api/auth/github/callback.
+      - key: GITHUB_CLIENT_ID
+        sync: false
+      - key: GITHUB_CLIENT_SECRET
+        sync: false
+      # Signs session cookies, min 32 chars: `openssl rand -hex 32`.
+      - key: SESSION_SECRET
+        sync: false
