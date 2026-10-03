@@ -1,4 +1,4 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Header } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import type { HealthResponse } from '@escrow/shared';
 import { PrismaService } from '../prisma/prisma.service';
@@ -17,5 +17,17 @@ export class HealthController {
       database: 'up',
       uptimeSeconds: Math.round(process.uptime()),
     };
+  }
+
+  /**
+   * Keep-alive target for an external cron (every 5 minutes), so the free-tier
+   * host never idles long enough to spin the instance down. Skips the database
+   * on purpose: a Postgres hiccup must not make the pinger mark the job failed.
+   * Express answers HEAD on GET routes too, for pingers that only send HEAD.
+   */
+  @Get('ping')
+  @Header('Cache-Control', 'no-store')
+  ping(): { status: 'ok'; uptimeSeconds: number } {
+    return { status: 'ok', uptimeSeconds: Math.round(process.uptime()) };
   }
 }
