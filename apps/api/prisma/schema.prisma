@@ -56,6 +56,12 @@ model GithubRepo {
   issues Issue[]
 }
 
+/// PENDING until the escrow account is verified on chain, then FUNDED.
+enum EscrowStatus {
+  PENDING
+  FUNDED
+}
+
 model Issue {
   id                String   @id @default(cuid())
   title             String
@@ -68,6 +74,11 @@ model Issue {
   /// Set once the matching issue is opened on GitHub, so null until then.
   githubIssueNumber Int?
   githubIssueUrl    String?
+  /// Base58 address of the on-chain escrow account; the vault is derived from it.
+  escrowAddress     String?      @unique
+  /// Signature of the create_and_deposit transaction that funded the escrow.
+  escrowSignature   String?      @unique
+  escrowStatus      EscrowStatus @default(PENDING)
   paidOutToId       String?
 
   paidOutAt DateTime? @db.Timestamptz(3)
