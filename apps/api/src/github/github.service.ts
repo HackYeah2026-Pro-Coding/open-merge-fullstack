@@ -1,4 +1,9 @@
-import { BadGatewayException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadGatewayException,
+  Injectable,
+  NotFoundException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Env } from '../config/env';
 import type { GithubRepoRef } from './github-repo-url';
@@ -9,6 +14,12 @@ const GITHUB_API = 'https://api.github.com';
 export interface GithubRepoInfo {
   /** "owner/name" in GitHub's canonical casing. */
   fullName: string;
+  htmlUrl: string;
+}
+
+/** The fields of GitHub's issue object this app uses. */
+export interface GithubIssueInfo {
+  number: number;
   htmlUrl: string;
 }
 
@@ -33,6 +44,89 @@ export class GithubService {
 
     const data = (await res.json()) as { full_name: string; html_url: string };
     return { fullName: data.full_name, htmlUrl: data.html_url };
+  }
+
+  /**
+   * Throws unless a token is configured. Opening issues needs one, so callers check
+   * this before doing work that would be left half done without it.
+   */
+  assertCanCreateIssues(): void {
+    if (!this.config.get('GITHUB_TOKEN', { infer: true })) {
+      throw new ServiceUnavailableException('GITHUB_TOKEN is not set, so issues cannot be opened on GitHub');
+    }
+  }
+
+  async createIssue(
+    { owner, repo }: GithubRepoRef,
+    issue: { title: string; body: string },
+  ): Promise<GithubIssueInfo> {
+    this.assertCanCreateIssues();
+    const slug = `${owner}/${repo}`;
+    const res = await fetch(
+      `${GITHUB_API}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues`,
+      {
+        method: 'POST',
+        headers: { ...this.headers(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: issue.title, body: issue.body }),
+      },
+    );
+
+    if (!res.ok) {
+      const body = await res.text();
+      throw new BadGatewayException(
+        `GitHub returned ${res.status} when opening an issue in ${slug}: ${body.slice(0, 200)}`,
+      );
+    }
+
+    const data = (await res.json()) as { number: number; html_url: string };
+    return { number: data.number, htmlUrl: data.html_url };
+  }
+
+  /**
+   * Authenticated REST call. Any non-2xx answer becomes a 502 carrying GitHub's
+   * status and message; a 204 resolves to undefined.
+   */
+  async request<T>(method: string, path: string, body?: unknown): Promise<T> {
+    this.assertHasToken();
+    const res = await fetch(`${GITHUB_API}${path}`, {
+      method,
+      headers: { ...this.headers(), 'Content-Type': 'application/json' },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new BadGatewayException(`GitHub returned ${res.status} for ${method} ${path}: ${text.slice(0, 200)}`);
+    }
+    return (res.status === 204 ? undefined : await res.json()) as T;
+  }
+
+  /** Fetches every page of a REST list endpoint, 100 items at a time. */
+  async requestAll<T>(path: string): Promise<T[]> {
+    const items: T[] = [];
+    const separator = path.includes('?') ? '&' : '?';
+    for (let page = 1; ; page++) {
+      const batch = await this.request<T[]>('GET', `${path}${separator}per_page=100&page=${page}`);
+      items.push(...batch);
+      if (batch.length < 100) return items;
+    }
+  }
+
+  /** GraphQL call. GitHub reports GraphQL failures with a 200 and an `errors` list. */
+  async graphql<T>(query: string, variables: Record<string, unknown>): Promise<T> {
+    const result = await this.request<{ data?: T; errors?: { message: string }[] }>('POST', '/graphql', {
+      query,
+      variables,
+    });
+    if (result.errors?.length) {
+      throw new BadGatewayException(`GitHub GraphQL error: ${result.errors.map((e) => e.message).join('; ')}`);
+    }
+    return result.data as T;
+  }
+
+  private assertHasToken(): void {
+    if (!this.config.get('GITHUB_TOKEN', { infer: true })) {
+      throw new ServiceUnavailableException('GITHUB_TOKEN is not set, so this GitHub action cannot run');
+    }
   }
 
   private headers(): Record<string, string> {

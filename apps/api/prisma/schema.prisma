@@ -57,15 +57,18 @@ model GithubRepo {
 }
 
 model Issue {
-  id           String   @id @default(cuid())
-  title        String
-  body         String
-  labels       String[] @default([])
+  id                String   @id @default(cuid())
+  title             String
+  body              String
+  labels            String[] @default([])
   /// Integer base units of the reward token, never a float.
-  rewardAmount BigInt
-  rewardSymbol String
-  githubRepoId String
-  paidOutToId  String?
+  rewardAmount      BigInt
+  rewardSymbol      String
+  githubRepoId      String
+  /// Set once the matching issue is opened on GitHub, so null until then.
+  githubIssueNumber Int?
+  githubIssueUrl    String?
+  paidOutToId       String?
 
   paidOutAt DateTime? @db.Timestamptz(3)
   closedAt  DateTime? @db.Timestamptz(3)
@@ -76,6 +79,7 @@ model Issue {
   paidOutTo  GithubAccount? @relation(fields: [paidOutToId], references: [id])
   payout     Payout?
 
+  @@unique([githubRepoId, githubIssueNumber])
   @@index([githubRepoId])
   @@index([paidOutToId])
 }
