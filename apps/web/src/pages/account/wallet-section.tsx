@@ -5,12 +5,13 @@ import { addressUrl } from '@/lib/explorer';
 import { cn } from '@/lib/cn';
 import { PHANTOM_DOWNLOAD_URL } from '@/wallet/phantom';
 import { usePhantom } from '@/wallet/use-phantom';
-import { type LinkStage, useLinkWallet, useUnlinkWallet } from '@/wallet/use-link-wallet';
+import { type LinkStage, useLinkWallet } from '@/wallet/use-link-wallet';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogClose, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CopyButton } from '@/components/common/copy-button';
 import { RelativeTime } from '@/components/common/relative-time';
+import { UnlinkWalletDialog } from '@/components/wallet/unlink-wallet-dialog';
+import { WalletBalancePanel } from '@/components/wallet/wallet-balance';
 
 const STAGES: { key: Exclude<LinkStage, 'idle'>; label: string }[] = [
   { key: 'connecting', label: 'Approve the connection in Phantom' },
@@ -48,34 +49,17 @@ function StageList({ stage }: { stage: LinkStage }) {
 }
 
 function UnlinkButton() {
-  const unlink = useUnlinkWallet();
   const [open, setOpen] = useState(false);
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
+    <UnlinkWalletDialog
+      open={open}
+      onOpenChange={setOpen}
+      trigger={
         <Button variant="ghost" size="sm">
           Unlink
         </Button>
-      </DialogTrigger>
-      <DialogContent
-        title="Unlink this wallet?"
-        description="Payouts for pull requests merged while no wallet is linked are held until you link one again."
-      >
-        <div className="flex justify-end gap-2">
-          <DialogClose asChild>
-            <Button size="sm">Cancel</Button>
-          </DialogClose>
-          <Button
-            size="sm"
-            variant="danger"
-            pending={unlink.isPending}
-            onClick={() => unlink.mutate(undefined, { onSuccess: () => setOpen(false) })}
-          >
-            Unlink wallet
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+      }
+    />
   );
 }
 
@@ -89,19 +73,22 @@ export function WalletSection({ user }: { user: User }) {
   if (user.wallet && !busy) {
     return (
       <div>
-        <div className="flex items-center gap-3 rounded-md border bg-bg px-4 py-3">
-          <span className="size-1.5 shrink-0 rounded-full bg-ok" aria-hidden />
-          <span className="data min-w-0 flex-1 truncate text-[13px] text-fg sm:text-ui">{user.wallet.address}</span>
-          <CopyButton value={user.wallet.address} label="wallet address" />
-          <a
-            href={addressUrl(user.wallet.address)}
-            target="_blank"
-            rel="noreferrer"
-            aria-label="Open wallet in explorer"
-            className="inline-flex size-6 items-center justify-center rounded-sm text-fg-subtle transition-colors duration-120 hover:bg-surface-2 hover:text-fg"
-          >
-            <ArrowUpRight className="size-3.5" />
-          </a>
+        <div className="rounded-md border bg-bg">
+          <div className="flex items-center gap-3 px-4 py-3">
+            <span className="size-1.5 shrink-0 rounded-full bg-ok" aria-hidden />
+            <span className="data min-w-0 flex-1 truncate text-[13px] text-fg sm:text-ui">{user.wallet.address}</span>
+            <CopyButton value={user.wallet.address} label="wallet address" />
+            <a
+              href={addressUrl(user.wallet.address)}
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Open wallet in explorer"
+              className="inline-flex size-6 items-center justify-center rounded-sm text-fg-subtle transition-colors duration-120 hover:bg-surface-2 hover:text-fg"
+            >
+              <ArrowUpRight className="size-3.5" />
+            </a>
+          </div>
+          <WalletBalancePanel address={user.wallet.address} />
         </div>
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
           <p className="text-[13px] text-fg-subtle">

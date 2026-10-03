@@ -4,7 +4,6 @@ import { Menu, Wallet, X } from 'lucide-react';
 import { useSession } from '@/api/queries';
 import { useSignOutAction } from '@/app/session-actions';
 import { cn } from '@/lib/cn';
-import { shortKey } from '@/lib/format';
 import { LogoHorizontal } from '@/components/common/logo';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -12,6 +11,7 @@ import { Tooltip } from '@/components/ui/tooltip';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ThemeToggle } from './theme-toggle';
 import { UserMenu } from './user-menu';
+import { WalletMenu } from './wallet-menu';
 
 function navItems(user: User | null | undefined) {
   return [
@@ -30,19 +30,7 @@ export function Logo() {
 }
 
 function WalletChip({ user }: { user: User }) {
-  if (user.wallet) {
-    return (
-      <Tooltip content="Payouts go to this wallet">
-        <Link
-          to="/account"
-          className="hidden h-8 items-center gap-2 rounded-full border bg-surface-1 px-3 text-[13px] text-fg-muted transition-colors duration-120 hover:text-fg sm:inline-flex"
-        >
-          <span className="size-1.5 rounded-full bg-ok" aria-hidden />
-          <span className="data">{shortKey(user.wallet.address)}</span>
-        </Link>
-      </Tooltip>
-    );
-  }
+  if (user.wallet) return <WalletMenu wallet={user.wallet} />;
   return (
     <Button asChild size="sm" variant="secondary" className="hidden sm:inline-flex">
       <Link to="/account#wallet">
