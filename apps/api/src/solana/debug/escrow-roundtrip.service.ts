@@ -38,7 +38,7 @@ interface Snapshot {
 
 /**
  * Locks a reward in a new escrow and releases it to a wallet, checking chain state
- * after each transaction. A development tool behind ESCROW_DEBUG_ENDPOINTS.
+ * after each transaction. Served without sign-in at /api/solana/debug.
  */
 @Injectable()
 export class EscrowRoundtripService {

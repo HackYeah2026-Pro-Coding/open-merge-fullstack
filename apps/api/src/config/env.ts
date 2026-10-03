@@ -50,9 +50,6 @@ export const envSchema = z.object({
   SOLANA_CI_KEYPAIR_B64: z.string().trim().optional(),
   SERVER_WALLET_KEYPAIR_B64: z.string().trim().optional(),
   SERVER_WALLET_ADDRESS: z.string().trim().optional(),
-  // Turns on /api/solana/debug, which locks and releases real escrows from the server
-  // wallet without signing in. Development only; refused in production.
-  ESCROW_DEBUG_ENDPOINTS: z.stringbool().default(false),
 
   // AI review of pull requests. Optional in development: without them the review
   // webhook answers 503 naming what is missing. Required in production.
@@ -152,9 +149,6 @@ export function validateEnv(raw: Record<string, unknown>): Env {
 
   const escrowIssue = escrowEnvIssue(rest, production);
   if (escrowIssue) throw configError(escrowIssue);
-  if (production && rest.ESCROW_DEBUG_ENDPOINTS) {
-    throw configError('ESCROW_DEBUG_ENDPOINTS: must be off in production');
-  }
 
   if (production) {
     const missing = REVIEW_REQUIRED.filter((name) => !rest[name]?.trim());

@@ -1,21 +1,7 @@
-import {
-  Body,
-  type CanActivate,
-  Controller,
-  Get,
-  HttpCode,
-  HttpStatus,
-  Injectable,
-  NotFoundException,
-  Post,
-  Res,
-  UseGuards,
-} from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { Body, Controller, Get, HttpCode, HttpStatus, Post, Res } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { z } from 'zod';
-import type { Env } from '../../config/env';
 import { ZodValidationPipe } from '../../core/pipes/zod-validation.pipe';
 import { EscrowRoundtripService } from './escrow-roundtrip.service';
 import type { RoundtripReport, StatusReport } from './report';
@@ -35,19 +21,7 @@ const roundtripBody = z
   })
   .default({ developerWallet: MOCK_DEVELOPER_WALLET });
 
-/** Answers 404 unless ESCROW_DEBUG_ENDPOINTS is on, so the routes do not exist elsewhere. */
-@Injectable()
-class DebugEndpointsGuard implements CanActivate {
-  constructor(private readonly config: ConfigService<Env, true>) {}
-
-  canActivate(): boolean {
-    if (!this.config.get('ESCROW_DEBUG_ENDPOINTS', { infer: true })) throw new NotFoundException();
-    return true;
-  }
-}
-
 @ApiTags('solana-debug')
-@UseGuards(DebugEndpointsGuard)
 @Controller('solana/debug')
 export class SolanaDebugController {
   constructor(private readonly roundtrips: EscrowRoundtripService) {}
