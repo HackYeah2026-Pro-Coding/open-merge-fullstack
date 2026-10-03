@@ -6,11 +6,13 @@ import type { SVGProps } from 'react';
  * currentColor and follows the theme through the text colour.
  */
 
-// The symbol, which also stands in for the "O" of the wordmark.
-const MARK = [
-  'M61.2441 128H61.2754C61.2568 128.498 61.2441 128.998 61.2441 129.5C61.2441 151.315 78.9289 169 100.744 169C121.765 169 138.948 152.579 140.172 131.865L167.744 150L201.192 128H201.241C201.242 128.167 201.244 128.333 201.244 128.5C201.244 184.005 156.249 229 100.744 229C45.2395 229 0.244141 184.005 0.244141 128.5C0.244141 128.333 0.246259 128.167 0.24707 128H0L30.5 106L61.2441 128Z',
-  'M100.5 0C156.005 0 201 44.9954 201 100.5C201 100.667 200.998 100.833 200.997 101H201.244L170.744 123L140 101H139.969C139.987 100.502 140 100.002 140 99.5C140 77.6848 122.315 60 100.5 60C79.4789 60 62.2957 76.4208 61.0723 97.1348L33.5 79L0.0517578 101H0.00292969C0.00211826 100.833 0 100.667 0 100.5C0 44.9954 44.9954 0 100.5 0Z',
-];
+// The symbol, which also stands in for the "O" of the wordmark. Two halves
+// that close into one ring: the lower one follows the text colour, the upper
+// one carries the brand colour. Hovering the logo pulls them together.
+const MARK_BOTTOM =
+  'M61.2441 128H61.2754C61.2568 128.498 61.2441 128.998 61.2441 129.5C61.2441 151.315 78.9289 169 100.744 169C121.765 169 138.948 152.579 140.172 131.865L167.744 150L201.192 128H201.241C201.242 128.167 201.244 128.333 201.244 128.5C201.244 184.005 156.249 229 100.744 229C45.2395 229 0.244141 184.005 0.244141 128.5C0.244141 128.333 0.246259 128.167 0.24707 128H0L30.5 106L61.2441 128Z';
+const MARK_TOP =
+  'M100.5 0C156.005 0 201 44.9954 201 100.5C201 100.667 200.998 100.833 200.997 101H201.244L170.744 123L140 101H139.969C139.987 100.502 140 100.002 140 99.5C140 77.6848 122.315 60 100.5 60C79.4789 60 62.2957 76.4208 61.0723 97.1348L33.5 79L0.0517578 101H0.00292969C0.00211826 100.833 0 100.667 0 100.5C0 44.9954 44.9954 0 100.5 0Z';
 
 // "penMerge", set to follow the symbol in the horizontal logo.
 const WORDMARK = [
@@ -26,13 +28,20 @@ const WORDMARK = [
 
 type LogoProps = Omit<SVGProps<SVGSVGElement>, 'viewBox' | 'children'>;
 
+function Mark() {
+  return (
+    <>
+      <path d={MARK_BOTTOM} className="transition-transform duration-180 group-hover/logo:-translate-y-2" />
+      <path d={MARK_TOP} className="text-brand transition-transform duration-180 group-hover/logo:translate-y-2" />
+    </>
+  );
+}
+
 /** The symbol alone, for square spots such as the sign-in page. */
 export function LogoMark(props: LogoProps) {
   return (
     <svg viewBox="0 0 201.244 229" fill="currentColor" aria-hidden {...props}>
-      {MARK.map((d) => (
-        <path key={d} d={d} />
-      ))}
+      <Mark />
     </svg>
   );
 }
@@ -41,7 +50,8 @@ export function LogoMark(props: LogoProps) {
 export function LogoHorizontal(props: LogoProps) {
   return (
     <svg viewBox="0 0 1489 270" fill="currentColor" aria-hidden {...props}>
-      {[...MARK, ...WORDMARK].map((d) => (
+      <Mark />
+      {WORDMARK.map((d) => (
         <path key={d} d={d} />
       ))}
     </svg>

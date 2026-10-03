@@ -23,8 +23,8 @@ function navItems(user: User | null | undefined) {
 
 export function Logo() {
   return (
-    <Link to="/" className="flex shrink-0 items-center rounded-sm text-fg" aria-label="OpenMerge home">
-      <LogoHorizontal className="h-5 w-auto" />
+    <Link to="/" className="group/logo flex shrink-0 items-center rounded-sm text-fg" aria-label="OpenMerge home">
+      <LogoHorizontal className="h-6 w-auto" />
     </Link>
   );
 }
@@ -84,6 +84,7 @@ export function TopBar() {
     <header className="sticky top-0 z-40 h-14 border-b bg-bg/85 backdrop-blur-md supports-[backdrop-filter]:bg-bg/70">
       <div className="mx-auto flex h-full w-full max-w-6xl items-center gap-6 px-4 sm:px-6">
         <Logo />
+        <span className="hidden h-5 w-px bg-border md:block" aria-hidden />
         <nav aria-label="Main" className="hidden items-center gap-1 md:flex">
           {items.map((item) => (
             <NavLink

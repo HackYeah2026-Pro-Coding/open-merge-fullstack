@@ -73,7 +73,7 @@ export function SignInPage() {
   return (
     <Container className="flex min-h-[calc(100dvh-56px-200px)] items-center py-16">
       <div className="w-full max-w-sm">
-        <LogoMark className="h-9 w-auto text-fg" />
+        <LogoMark className="h-11 w-auto text-fg" />
         <h1 className="mt-8 text-title font-semibold">Sign in to OpenMerge</h1>
         <p className="mt-3 text-body text-fg-muted">
           Your GitHub account identifies you on pull requests, so a merge can be matched to the right payout.
