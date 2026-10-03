@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { GithubModule } from '../github/github.module';
+import { PayoutModule } from '../payout/payout.module';
 import { DEFAULT_CI_WAIT } from './ci-status';
 import { GithubReviewClient } from './github-review.client';
 import { ReviewController } from './review.controller';
@@ -11,7 +12,7 @@ import { GeminiReviewer } from './reviewers/gemini.reviewer';
 import { REVIEWERS } from './reviewers/reviewer';
 
 @Module({
-  imports: [GithubModule],
+  imports: [GithubModule, PayoutModule],
   controllers: [ReviewWebhookController, ReviewController],
   providers: [
     GithubReviewClient,

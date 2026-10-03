@@ -9,7 +9,8 @@ export const pullRequestEventSchema = z.object({
     html_url: z.string(),
     draft: z.boolean().optional(),
     merged: z.boolean().optional(),
-    user: z.object({ login: z.string(), avatar_url: z.string().nullable().optional() }),
+    // The pull request author, who is paid on merge. Not `sender`, which is whoever merged.
+    user: z.object({ id: z.number().int(), login: z.string(), avatar_url: z.string().nullable().optional() }),
     head: z.object({ sha: z.string() }),
   }),
   repository: z.object({ full_name: z.string() }),

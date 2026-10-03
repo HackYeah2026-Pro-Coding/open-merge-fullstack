@@ -17,16 +17,19 @@ export interface LockedReward {
 }
 
 interface Chain {
-  program: Program<OpenSourceProject>;
-  /** The server wallet, which funds every escrow. */
-  client: Keypair;
+  /** Signs as the server wallet, the client that funds every escrow. */
+  clientProgram: Program<OpenSourceProject>;
+  /** Signs as the verifier, the only key the program lets release an escrow. */
+  verifierProgram: Program<OpenSourceProject>;
+  client: PublicKey;
   verifier: PublicKey;
   tokenMint: PublicKey;
 }
 
 /**
- * Calls the escrow program. The server wallet acts as the client of every escrow,
- * so it can lock rewards; only the verifier can release or cancel them.
+ * Calls the escrow program. The server wallet is the client of every escrow and
+ * locks rewards; the verifier key releases them. For the hackathon both keys live
+ * in this backend.
  */
 @Injectable()
 export class EscrowService {
@@ -43,11 +46,15 @@ export class EscrowService {
     const client = keypairFromBase64('SERVER_WALLET_KEYPAIR_B64', serverKeypair);
     const verifier = keypairFromBase64('SOLANA_CI_KEYPAIR_B64', config.get('SOLANA_CI_KEYPAIR_B64', { infer: true })!);
     const connection = new Connection(config.get('SOLANA_RPC_URL', { infer: true }), 'confirmed');
-    const provider = new AnchorProvider(connection, new Wallet(client), { commitment: 'confirmed' });
+    const programAs = (signer: Keypair) =>
+      new Program<OpenSourceProject>(
+        idl as OpenSourceProject,
+        new AnchorProvider(connection, new Wallet(signer), { commitment: 'confirmed' }),
+      );
     this.chain = {
-      program: new Program<OpenSourceProject>(idl as OpenSourceProject, provider),
-      client,
-      // Only the public key is stored in the escrow; the verifier does not sign here.
+      clientProgram: programAs(client),
+      verifierProgram: programAs(verifier),
+      client: client.publicKey,
       verifier: verifier.publicKey,
       tokenMint: publicKeyFrom('TOKEN_MINT', config.get('TOKEN_MINT', { infer: true })!),
     };
@@ -69,19 +76,15 @@ export class EscrowService {
     const escrowAddress = escrow.publicKey.toBase58();
 
     try {
-      const signature = await chain.program.methods
+      const signature = await chain.clientProgram.methods
         .createAndDeposit(new BN(amount.toString()))
         .accountsPartial({
-          client: chain.client.publicKey,
+          // The verifier does not sign here; its public key is stored in the escrow.
+          client: chain.client,
           verifier: chain.verifier,
           tokenMint: chain.tokenMint,
           escrow: escrow.publicKey,
-          clientTokenAccount: getAssociatedTokenAddressSync(
-            chain.tokenMint,
-            chain.client.publicKey,
-            false,
-            tokenProgram,
-          ),
+          clientTokenAccount: getAssociatedTokenAddressSync(chain.tokenMint, chain.client, false, tokenProgram),
           tokenProgram,
         })
         .signers([escrow])
@@ -95,6 +98,31 @@ export class EscrowService {
         error instanceof Error ? error.stack : String(error),
       );
       throw new BadGatewayException(`Locking the reward on Solana failed: ${messageOf(error)}`, { cause: error });
+    }
+  }
+
+  /**
+   * Pays the tokens locked in an escrow out to a developer's wallet, creating their
+   * token account if needed. Returns the transaction signature.
+   */
+  async release(escrowAddress: string, developerWallet: string): Promise<string> {
+    const chain = this.requireChain();
+    const escrow = publicKeyFrom('escrowAddress', escrowAddress);
+    const developer = publicKeyFrom('developerWallet', developerWallet);
+    const tokenProgram = await this.tokenProgramOf(chain);
+
+    try {
+      return await chain.verifierProgram.methods
+        .release()
+        .accountsPartial({ verifier: chain.verifier, escrow, developer, tokenMint: chain.tokenMint, tokenProgram })
+        .rpc();
+    } catch (error) {
+      // As with locking, a timeout can hide a release that still lands; check the escrow on an explorer.
+      this.logger.error(
+        `release failed for escrow ${escrowAddress} to ${developerWallet}`,
+        error instanceof Error ? error.stack : String(error),
+      );
+      throw new BadGatewayException(`Releasing escrow ${escrowAddress} failed: ${messageOf(error)}`, { cause: error });
     }
   }
 
@@ -112,7 +140,7 @@ export class EscrowService {
     const mint = chain.tokenMint.toBase58();
     let owner: PublicKey | undefined;
     try {
-      owner = (await chain.program.provider.connection.getAccountInfo(chain.tokenMint))?.owner;
+      owner = (await chain.clientProgram.provider.connection.getAccountInfo(chain.tokenMint))?.owner;
     } catch (error) {
       throw new BadGatewayException(`Solana RPC failed while reading mint ${mint}: ${messageOf(error)}`, {
         cause: error,

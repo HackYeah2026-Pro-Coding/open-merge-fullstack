@@ -13,7 +13,7 @@ const payload = {
     number: 1,
     title: 't',
     html_url: 'u',
-    user: { login: 'ada' },
+    user: { id: 1, login: 'ada' },
     head: { sha: 'sha1' },
   },
 };

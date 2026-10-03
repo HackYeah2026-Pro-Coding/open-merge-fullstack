@@ -1,6 +1,7 @@
 import { ConflictException, Injectable, Logger, NotFoundException, type OnModuleInit } from '@nestjs/common';
 import type { Submission } from '@escrow/shared';
 import { Prisma } from '../generated/prisma/client';
+import { PayoutService, type PayoutRecipient } from '../payout/payout.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { toCommitCheck } from './check-view';
 import { GithubReviewClient } from './github-review.client';
@@ -8,7 +9,7 @@ import { ReviewRunner } from './review.runner';
 import { REVIEW_ACTIONS, type PullRequestEvent } from './webhook-payload';
 
 /** What the webhook did with a delivery, returned to GitHub for the delivery log. */
-export type WebhookResult = 'ignored' | 'started' | 'duplicate' | 'updated';
+export type WebhookResult = 'ignored' | 'started' | 'duplicate' | 'updated' | 'releasing';
 
 const reviewInclude = { results: true } as const;
 
@@ -20,6 +21,7 @@ export class ReviewService implements OnModuleInit {
     private readonly prisma: PrismaService,
     private readonly github: GithubReviewClient,
     private readonly runner: ReviewRunner,
+    private readonly payouts: PayoutService,
   ) {}
 
   /** A restart kills reviews in flight; mark them so the app offers a re-run instead of spinning forever. */
@@ -38,17 +40,28 @@ export class ReviewService implements OnModuleInit {
     });
     if (!repo) return 'ignored';
 
+    const [owner, name] = repo.githubRepoName.split('/');
+    const slug = { owner, repo: name };
+
     if (event.action === 'closed') {
       const { count } = await this.prisma.pullRequest.updateMany({
         where: { githubRepoId: repo.id, number: pr.number },
         data: { state: pr.merged ? 'merged' : 'closed' },
       });
-      return count > 0 ? 'updated' : 'ignored';
+      if (!pr.merged) return count > 0 ? 'updated' : 'ignored';
+
+      // Every merge pays, whatever the review said, so an unreviewed pull request counts too.
+      const tracked = await this.prisma.pullRequest.findUnique({
+        where: { githubRepoId_number: { githubRepoId: repo.id, number: pr.number } },
+      });
+      const issueId = tracked?.issueId ?? (await this.linkedIssue(repo.id, slug, pr.number))?.id;
+      if (!issueId) return count > 0 ? 'updated' : 'ignored';
+      this.startPayout(issueId, { githubId: pr.user.id, login: pr.user.login });
+      return 'releasing';
     }
     if (!REVIEW_ACTIONS.has(event.action) || pr.draft) return 'ignored';
 
-    const [owner, name] = repo.githubRepoName.split('/');
-    const issue = await this.linkedIssue(repo.id, { owner, repo: name }, pr.number);
+    const issue = await this.linkedIssue(repo.id, slug, pr.number);
     if (!issue) return 'ignored';
 
     const pullRequest = await this.prisma.pullRequest.upsert({
@@ -136,6 +149,17 @@ export class ReviewService implements OnModuleInit {
     const numbers = await this.github.closingIssueNumbers(slug, number);
     if (numbers.length === 0) return null;
     return this.prisma.issue.findFirst({ where: { githubRepoId: repoId, githubIssueNumber: { in: numbers } } });
+  }
+
+  /** In the background like reviews: a release waits for on-chain confirmation. */
+  private startPayout(issueId: string, recipient: PayoutRecipient): void {
+    this.payouts.releaseForMerge(issueId, recipient).then(
+      (outcome) => this.logger.log(`Payout for issue ${issueId}: ${outcome}`),
+      (error: unknown) => {
+        // GitHub already has its answer, so the log is where this failure surfaces.
+        this.logger.error(`Payout for issue ${issueId} failed`, error instanceof Error ? error.stack : String(error));
+      },
+    );
   }
 
   /** Runs in the background so the webhook answers inside GitHub's 10 second limit. */

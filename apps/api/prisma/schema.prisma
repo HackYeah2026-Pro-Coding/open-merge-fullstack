@@ -57,10 +57,12 @@ model GithubRepo {
   pullRequests PullRequest[]
 }
 
-/// PENDING until the escrow account is verified on chain, then FUNDED.
+/// PENDING until the escrow account is verified on chain, then FUNDED, and
+/// RELEASED once the reward is paid out to the developer.
 enum EscrowStatus {
   PENDING
   FUNDED
+  RELEASED
 }
 
 model Issue {
@@ -102,6 +104,8 @@ model Payout {
   issueId           String  @unique
   recipientGithubId Int
   walletAddress     String?
+  /// Signature of the release transaction; null until the reward is paid out.
+  releaseSignature  String? @unique
 
   createdAt  DateTime  @default(now()) @db.Timestamptz(3)
   releasedAt DateTime? @db.Timestamptz(3)
