@@ -22,5 +22,6 @@ import { REVIEWERS } from './reviewers/reviewer';
     { provide: REVIEWERS, useFactory: (claude: ClaudeReviewer, gemini: GeminiReviewer) => [claude, gemini], inject: [ClaudeReviewer, GeminiReviewer] },
     { provide: CI_WAIT_OPTIONS, useValue: DEFAULT_CI_WAIT },
   ],
+  exports: [GithubReviewClient],
 })
 export class ReviewModule {}

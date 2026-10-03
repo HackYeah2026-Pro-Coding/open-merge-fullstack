@@ -1,36 +1,70 @@
-import { BadRequestException } from '@nestjs/common';
+import { createHmac } from 'node:crypto';
+import { BadRequestException, ServiceUnavailableException, UnauthorizedException } from '@nestjs/common';
+import type { ConfigService } from '@nestjs/config';
+import type { Env } from '../config/env';
 import { MergeController } from './merge.controller';
+import type { MergeService } from './merge.service';
 
-const event = (action: string, merged?: boolean) => ({
-  action,
+const SECRET = 'hook-secret';
+const payload = {
+  action: 'closed',
   repository: { full_name: 'acme/widgets' },
-  pull_request: { number: 1, merged },
-});
+  pull_request: {
+    number: 1,
+    title: 't',
+    html_url: 'u',
+    merged: true,
+    user: { id: 1, login: 'ada' },
+    head: { sha: 'sha1' },
+  },
+};
+
+function setup(secret: string | null = SECRET) {
+  const merges = { handleClosed: jest.fn().mockResolvedValue('releasing') };
+  const config = { get: (key: string) => (key === 'GITHUB_WEBHOOK_SECRET' ? (secret ?? undefined) : undefined) } as unknown as ConfigService<Env, true>;
+  const controller = new MergeController(merges as unknown as MergeService, config);
+  const signed = (body: unknown, key = SECRET) => {
+    const rawBody = Buffer.from(JSON.stringify(body));
+    return { request: { rawBody } as never, signature: `sha256=${createHmac('sha256', key).update(rawBody).digest('hex')}` };
+  };
+  return { controller, merges, signed };
+}
 
 describe('MergeController', () => {
-  const controller = new MergeController();
-
-  it('passes through a merged pull request untouched', () => {
-    const merged = event('closed', true);
-    expect(controller.webhookHandler('pull_request', merged)).toEqual(merged);
+  it('hands a correctly signed pull_request event to the merge service', async () => {
+    const { controller, merges, signed } = setup();
+    const { request, signature } = signed(payload);
+    await expect(controller.webhookHandler(request, 'pull_request', signature, payload)).resolves.toEqual({ result: 'releasing' });
+    expect(merges.handleClosed).toHaveBeenCalledWith(expect.objectContaining({ action: 'closed' }));
   });
 
-  it('ignores a pull request closed without merging', () => {
-    expect(controller.webhookHandler('pull_request', event('closed', false))).toEqual({ result: 'ignored' });
+  it('rejects a forged or unsigned merge before it can move money', async () => {
+    const { controller, merges, signed } = setup();
+    const { request, signature } = signed(payload, 'attacker-secret');
+    await expect(controller.webhookHandler(request, 'pull_request', signature, payload)).rejects.toThrow(UnauthorizedException);
+    await expect(controller.webhookHandler(request, 'pull_request', undefined, payload)).rejects.toThrow(UnauthorizedException);
+    expect(merges.handleClosed).not.toHaveBeenCalled();
   });
 
-  it('ignores every other pull request action', () => {
-    for (const action of ['opened', 'synchronize', 'reopened', 'edited']) {
-      expect(controller.webhookHandler('pull_request', event(action))).toEqual({ result: 'ignored' });
-    }
+  it('is unavailable, not open, when no secret is configured', async () => {
+    const { controller, signed } = setup(null);
+    const { request, signature } = signed(payload);
+    await expect(controller.webhookHandler(request, 'pull_request', signature, payload)).rejects.toThrow(ServiceUnavailableException);
   });
 
-  it('ignores events that are not pull requests', () => {
-    expect(controller.webhookHandler('ping', { zen: 'Keep it logically awesome.' })).toEqual({ result: 'ignored' });
-    expect(controller.webhookHandler(undefined, event('closed', true))).toEqual({ result: 'ignored' });
+  it('answers a ping and ignores other events', async () => {
+    const { controller, merges, signed } = setup();
+    const ping = { zen: 'Keep it logically awesome.' };
+    const { request, signature } = signed(ping);
+    await expect(controller.webhookHandler(request, 'ping', signature, ping)).resolves.toEqual({ result: 'pong' });
+    await expect(controller.webhookHandler(request, 'issues', signature, ping)).resolves.toEqual({ result: 'ignored' });
+    expect(merges.handleClosed).not.toHaveBeenCalled();
   });
 
-  it('rejects a pull_request payload it cannot read', () => {
-    expect(() => controller.webhookHandler('pull_request', { action: 'closed' })).toThrow(BadRequestException);
+  it('rejects a pull_request payload it cannot read', async () => {
+    const { controller, signed } = setup();
+    const bad = { action: 'closed' };
+    const { request, signature } = signed(bad);
+    await expect(controller.webhookHandler(request, 'pull_request', signature, bad)).rejects.toThrow(BadRequestException);
   });
 });
