@@ -141,5 +141,16 @@ describe('validateEnv', () => {
         'the public key does not match the secret key',
       );
     });
+
+    it('keeps the debug endpoints off unless asked', () => {
+      expect(validateEnv({ ...BASE }).ESCROW_DEBUG_ENDPOINTS).toBe(false);
+      expect(validateEnv({ ...BASE, ESCROW_DEBUG_ENDPOINTS: 'true' }).ESCROW_DEBUG_ENDPOINTS).toBe(true);
+    });
+
+    it('refuses the debug endpoints in production', () => {
+      expect(() => validateEnv({ ...PRODUCTION, ESCROW_DEBUG_ENDPOINTS: 'true' })).toThrow(
+        'ESCROW_DEBUG_ENDPOINTS: must be off in production',
+      );
+    });
   });
 });

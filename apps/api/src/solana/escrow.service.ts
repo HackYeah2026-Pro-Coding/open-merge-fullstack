@@ -16,6 +16,14 @@ export interface LockedReward {
   signature: string;
 }
 
+/** Public addresses of the escrow setup, in base58. */
+export interface EscrowAddresses {
+  programId: string;
+  client: string;
+  verifier: string;
+  tokenMint: string;
+}
+
 interface Chain {
   /** Signs as the server wallet, the client that funds every escrow. */
   clientProgram: Program<OpenSourceProject>;
@@ -124,6 +132,17 @@ export class EscrowService {
       );
       throw new BadGatewayException(`Releasing escrow ${escrowAddress} failed: ${messageOf(error)}`, { cause: error });
     }
+  }
+
+  /** The public keys this service signs with and pays in. No secrets. */
+  addresses(): EscrowAddresses {
+    const chain = this.requireChain();
+    return {
+      programId: chain.clientProgram.programId.toBase58(),
+      client: chain.client.toBase58(),
+      verifier: chain.verifier.toBase58(),
+      tokenMint: chain.tokenMint.toBase58(),
+    };
   }
 
   private requireChain(): Chain {
