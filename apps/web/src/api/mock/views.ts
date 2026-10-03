@@ -1,5 +1,6 @@
 import type { Bounty, BountyStats, BountyStatus, BountySummary, RepositoryRef, RepositorySummary, Submission } from '@escrow/shared';
 import { env } from '@/lib/env';
+import { CI_PASSED } from './reviews';
 import { MOCK_TOKEN, type MockBounty, type MockRepository, type MockSubmission } from './types';
 
 /** Settles pending checks whose time has come. Returns true when something changed. */
@@ -8,6 +9,9 @@ export function settleChecks(bounty: MockBounty, now: Date = new Date()): boolea
   for (const s of bounty.submissions) {
     if (s.checkResolvesAt && s.checkOutcome && new Date(s.checkResolvesAt) <= now) {
       s.check = s.checkOutcome;
+      s.ci = CI_PASSED;
+      s.reviewedAt = now.toISOString();
+      s.retryableReviewId = null;
       s.checkResolvesAt = null;
       s.checkOutcome = null;
       changed = true;

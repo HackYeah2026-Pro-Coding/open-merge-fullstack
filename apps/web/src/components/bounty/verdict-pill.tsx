@@ -1,5 +1,5 @@
 import type { CommitCheck, ReviewVerdict } from '@escrow/shared';
-import { Check, X } from 'lucide-react';
+import { Check, Minus, X } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { Tooltip } from '@/components/ui/tooltip';
 
@@ -7,11 +7,13 @@ const VERDICT: Record<ReviewVerdict, { label: string; className: string }> = {
   approve: { label: 'Approves', className: 'bg-ok/12 text-ok-text' },
   changes: { label: 'Requests changes', className: 'bg-danger/12 text-danger' },
   pending: { label: 'Reviewing', className: 'bg-warn/10 text-warn' },
+  error: { label: 'No answer', className: 'bg-surface-2 text-fg-muted' },
 };
 
 function VerdictIcon({ verdict }: { verdict: ReviewVerdict }) {
   if (verdict === 'approve') return <Check className="size-3" strokeWidth={2.75} />;
   if (verdict === 'changes') return <X className="size-3" strokeWidth={2.75} />;
+  if (verdict === 'error') return <Minus className="size-3" strokeWidth={2.75} />;
   return <span className="size-1.5 animate-pulse rounded-full bg-current" />;
 }
 

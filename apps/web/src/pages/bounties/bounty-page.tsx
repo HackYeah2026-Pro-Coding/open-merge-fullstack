@@ -128,7 +128,7 @@ export function BountyPage() {
               ) : (
                 <ul className="divide-y rounded-lg border">
                   {bounty.data.submissions.map((s) => (
-                    <PullRequestRow key={s.id} submission={s} />
+                    <PullRequestRow key={s.id} submission={s} canRerun={session.data?.user != null} />
                   ))}
                 </ul>
               )}

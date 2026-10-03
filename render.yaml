@@ -28,3 +28,15 @@ services:
       # Signs session cookies, min 32 chars: `openssl rand -hex 32`.
       - key: SESSION_SECRET
         sync: false
+      # AI review of pull requests. The webhook secret must match the one set on the GitHub webhook.
+      - key: GITHUB_WEBHOOK_SECRET
+        sync: false
+      # Bot account token: read repo, write issues, pull requests and commit statuses.
+      - key: GITHUB_TOKEN
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        sync: false

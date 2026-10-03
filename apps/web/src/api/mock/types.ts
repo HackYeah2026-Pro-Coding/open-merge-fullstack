@@ -33,7 +33,7 @@ export interface MockBounty {
 }
 
 export interface MockDb {
-  version: 3;
+  version: 4;
   users: User[];
   repositories: MockRepository[];
   bounties: MockBounty[];

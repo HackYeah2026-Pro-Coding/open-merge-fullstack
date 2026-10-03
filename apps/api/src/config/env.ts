@@ -32,7 +32,19 @@ export const envSchema = z.object({
   // Optional GitHub token for REST API calls. Without it requests are anonymous:
   // public repos only, 60 requests an hour.
   GITHUB_TOKEN: z.string().optional(),
+
+  // AI review of pull requests. Optional in development: without them the review
+  // webhook answers 503 naming what is missing. Required in production.
+  GITHUB_WEBHOOK_SECRET: z.string().optional(),
+  ANTHROPIC_API_KEY: z.string().optional(),
+  CLAUDE_REVIEW_MODEL: z.string().min(1).default('claude-opus-5-5'),
+  GEMINI_API_KEY: z.string().optional(),
+  // Taken from Google AI Studio; model names change more often than this code.
+  GEMINI_MODEL: z.string().optional(),
 });
+
+/** Variables the AI review cannot run without; each must be set in production. */
+const REVIEW_REQUIRED = ['GITHUB_WEBHOOK_SECRET', 'ANTHROPIC_API_KEY', 'GEMINI_API_KEY', 'GEMINI_MODEL'] as const;
 
 type Resolved = 'WALLET_CHALLENGE_SECRET' | 'SESSION_SECRET' | 'GITHUB_CLIENT_ID' | 'GITHUB_CLIENT_SECRET';
 
@@ -77,6 +89,11 @@ export function validateEnv(raw: Record<string, unknown>): Env {
   }
   if (production && !clientId) {
     throw configError('GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET: required in production');
+  }
+
+  if (production) {
+    const missing = REVIEW_REQUIRED.filter((name) => !rest[name]?.trim());
+    if (missing.length > 0) throw configError(`${missing.join(', ')}: required in production`);
   }
 
   return {

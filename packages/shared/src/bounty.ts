@@ -22,20 +22,52 @@ export interface BountyListQuery {
   sort?: BountySort;
 }
 
-export type ReviewVerdict = 'approve' | 'changes' | 'pending';
+/** `error` means the reviewer gave no answer (outage, refusal, unreadable reply). */
+export type ReviewVerdict = 'approve' | 'changes' | 'pending' | 'error';
+
+export type CriterionStatus = 'met' | 'not_met' | 'unknown';
+
+/** One acceptance criterion derived from the issue, and what the reviewer found for it. */
+export interface ReviewCriterion {
+  criterion: string;
+  status: CriterionStatus;
+  /** file:line or a CI job name; says what is missing when the status is unknown. */
+  evidence: string;
+}
+
+export type ReviewConfidence = 'low' | 'medium' | 'high';
 
 export interface ReviewerVerdict {
   reviewer: string;
   verdict: ReviewVerdict;
+  /** One or two sentences for the project owner; the error message when the verdict is `error`. */
   summary: string | null;
+  /** Model that answered, when it did. */
+  model: string | null;
+  confidence: ReviewConfidence | null;
+  criteria: ReviewCriterion[];
+  risks: string[];
 }
 
-export type CheckState = 'not_run' | 'pending' | 'passed' | 'failed';
+export type CheckState = 'not_run' | 'pending' | 'passed' | 'failed' | 'error';
 
 /** Result of the automated check on one commit. */
 export interface CommitCheck {
   state: CheckState;
   reviewers: ReviewerVerdict[];
+}
+
+/**
+ * passed   every workflow run of the commit succeeded
+ * failed   at least one run failed
+ * none     the repository ran no CI for this commit
+ * timeout  CI was still running when the review started
+ */
+export type CiState = 'passed' | 'failed' | 'none' | 'timeout';
+
+export interface CiResult {
+  state: CiState;
+  failedJobs: string[];
 }
 
 export type PullRequestState = 'open' | 'merged' | 'closed';
@@ -49,6 +81,11 @@ export interface Submission {
   state: PullRequestState;
   headSha: string;
   check: CommitCheck;
+  /** CI outcome the review took into account; null until a review has run. */
+  ci: CiResult | null;
+  /** Review run to retry when its check state is `error`; null when there is nothing to retry. */
+  retryableReviewId: string | null;
+  reviewedAt: string | null;
   openedAt: string;
   updatedAt: string;
 }

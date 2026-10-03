@@ -9,6 +9,7 @@ import { SolanaModule } from './solana/solana.module';
 import { MergeModule } from './merge/merge.module';
 import { RepoModule } from './repo/repo.module';
 import { IssueModule } from './issue/issue.module';
+import { ReviewModule } from './review/review.module';
 import { WalletModule } from './wallet/wallet.module';
 
 @Module({
@@ -28,6 +29,7 @@ import { WalletModule } from './wallet/wallet.module';
     AuthModule,
     WalletModule,
     IssueModule,
+    ReviewModule,
     // Feature modules go here.
   ],
 })

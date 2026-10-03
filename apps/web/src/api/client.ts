@@ -44,6 +44,9 @@ export interface ApiClient {
   getBounty(repo: string, issueNumber: number): Promise<Bounty>;
   createBounty(input: CreateBountyInput): Promise<Bounty>;
 
+  /** Runs an AI review again after it ended in an error. The result arrives through the bounty's submissions. */
+  rerunReview(reviewId: string): Promise<void>;
+
   listMySubmissions(): Promise<MySubmission[]>;
   createWalletChallenge(address: string): Promise<WalletChallenge>;
   linkWallet(input: LinkWalletInput): Promise<User>;

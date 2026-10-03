@@ -49,6 +49,8 @@ export const httpApi: ApiClient = {
   getBounty: (repo, issueNumber) => request(`/bounties/${encodeURIComponent(repo)}/${issueNumber}`),
   createBounty: (input) => request('/bounties', { method: 'POST', body: JSON.stringify(input) }),
 
+  rerunReview: (reviewId) => request(`/review/${encodeURIComponent(reviewId)}/rerun`, { method: 'POST' }),
+
   listMySubmissions: () => request('/me/submissions'),
   createWalletChallenge: (address) =>
     request('/me/wallet/challenge', { method: 'POST', body: JSON.stringify({ address }) }),
