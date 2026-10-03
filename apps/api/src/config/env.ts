@@ -13,6 +13,9 @@ export const envSchema = z.object({
   // image URL. In production it must be reachable from outside.
   API_URL: z.string().url().default('http://localhost:3000'),
 
+  // Signs wallet-link challenges. Required in production; development falls back to a fixed value.
+  WALLET_CHALLENGE_SECRET: z.string().min(32).or(z.literal('')).optional(),
+
   // Which database to talk to. The URLs live side by side so switching is a
   // one-word edit, never a connection-string edit. See src/config/database-url.ts.
   DB_TARGET: z.enum(DB_TARGETS).default('local'),
@@ -26,7 +29,10 @@ export const envSchema = z.object({
 });
 
 /** DATABASE_URL is derived from DB_TARGET rather than set directly. */
-export type Env = z.infer<typeof envSchema> & { DATABASE_URL: string };
+export type Env = Omit<z.infer<typeof envSchema>, 'WALLET_CHALLENGE_SECRET'> & {
+  DATABASE_URL: string;
+  WALLET_CHALLENGE_SECRET: string;
+};
 
 export function validateEnv(raw: Record<string, unknown>): Env {
   const result = envSchema.safeParse(raw);
@@ -39,5 +45,14 @@ export function validateEnv(raw: Record<string, unknown>): Env {
 
   // Throws with an actionable message naming the variable that is missing.
   const DATABASE_URL = resolveDatabaseUrl(raw as Record<string, string | undefined>);
-  return { ...result.data, DATABASE_URL };
+  const { WALLET_CHALLENGE_SECRET: secret, ...rest } = result.data;
+  const WALLET_CHALLENGE_SECRET = secret || undefined;
+  if (!WALLET_CHALLENGE_SECRET && rest.NODE_ENV === 'production') {
+    throw new Error('Invalid environment configuration:\n  WALLET_CHALLENGE_SECRET: required in production (min 32 chars)\n\nSee .env.example.');
+  }
+  return {
+    ...rest,
+    DATABASE_URL,
+    WALLET_CHALLENGE_SECRET: WALLET_CHALLENGE_SECRET ?? 'development-only-wallet-challenge-secret',
+  };
 }
