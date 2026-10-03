@@ -1,7 +1,8 @@
 /**
  * Types and helpers shared by the API and the web app.
- * Business types (bounties, submissions, reviews) go here later so that one
- * definition serves both sides.
+ *
+ * The web app imports types only: this package compiles to CommonJS, which the
+ * browser bundle does not consume. Keep runtime values out of what the web needs.
  */
 
 export interface HealthResponse {
@@ -11,3 +12,8 @@ export interface HealthResponse {
 }
 
 export const API_PREFIX = '/api';
+
+export * from './money';
+export * from './user';
+export * from './project';
+export * from './bounty';

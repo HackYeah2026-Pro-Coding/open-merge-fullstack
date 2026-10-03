@@ -1,37 +1,52 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
 /*
- * Design tokens. Dark is the default; both themes are defined from day one so the
- * design pass later only changes values here, never component code.
+ * Design tokens, as specified in AGENTS.md. Dark is the default.
  * Toggle with  document.documentElement.dataset.theme = "light" | "dark".
+ * Components use the tokens only, never raw colour values.
  */
 :root {
-  --bg: oklch(0.145 0.005 265);
-  --surface-1: oklch(0.185 0.006 265);
-  --surface-2: oklch(0.225 0.007 265);
-  --border: oklch(0.3 0.008 265);
-  --fg: oklch(0.97 0.002 265);
-  --fg-muted: oklch(0.72 0.006 265);
-  --fg-subtle: oklch(0.55 0.006 265);
-  --brand: oklch(0.62 0.2 292);
-  --ok: oklch(0.72 0.17 152);
-  --danger: oklch(0.65 0.21 20);
+  color-scheme: dark;
+  --bg: #090a0c;
+  --surface-1: #111315;
+  --surface-2: #1a1c1f;
+  --border: #2c2e32;
+  --fg: #f4f5f6;
+  --fg-muted: #a3a5a8;
+  --fg-subtle: #707175;
+  --brand: #8c67f2;
+  --money: #f3ba3c;
+  --ok: #35c26d;
+  --warn: #efa831;
+  --danger: #f44657;
+  /* Small-text variants. Equal to money/ok in dark; see the light theme. */
+  --money-text: #f3ba3c;
+  --ok-text: #35c26d;
+  --overlay-shadow: 0 16px 48px -12px rgb(0 0 0 / 0.6), 0 4px 12px -4px rgb(0 0 0 / 0.4);
 }
 
 :root[data-theme="light"] {
-  --bg: oklch(0.995 0 0);
-  --surface-1: oklch(0.975 0.002 265);
-  --surface-2: oklch(0.955 0.003 265);
-  --border: oklch(0.9 0.004 265);
-  --fg: oklch(0.205 0.005 265);
-  --fg-muted: oklch(0.47 0.008 265);
-  --fg-subtle: oklch(0.6 0.008 265);
-  --brand: oklch(0.53 0.21 292);
-  --ok: oklch(0.56 0.15 152);
-  --danger: oklch(0.56 0.2 20);
+  color-scheme: light;
+  --bg: #fdfdfd;
+  --surface-1: #f6f7f8;
+  --surface-2: #eff0f2;
+  --border: #dddee1;
+  --fg: #161719;
+  --fg-muted: #595b5f;
+  --fg-subtle: #7e8085;
+  --brand: #7446d8;
+  --money: #b07100;
+  --ok: #008c45;
+  --warn: #9a6400;
+  --danger: #d02940;
+  /* money and ok pass AA on bg only at 18px+ in light; darker same-hue variants for smaller text. */
+  --money-text: #8a5800;
+  --ok-text: #007a3d;
+  --overlay-shadow: 0 16px 48px -12px rgb(22 23 25 / 0.18), 0 4px 12px -4px rgb(22 23 25 / 0.08);
 }
 
-/* Expose the tokens to Tailwind as bg-bg, text-fg, border-border, text-brand, ... */
+/* Expose the tokens to Tailwind as bg-bg, text-fg, border-border, text-money, ... */
 @theme inline {
   --color-bg: var(--bg);
   --color-surface-1: var(--surface-1);
@@ -41,17 +56,118 @@
   --color-fg-muted: var(--fg-muted);
   --color-fg-subtle: var(--fg-subtle);
   --color-brand: var(--brand);
+  --color-money: var(--money);
+  --color-money-text: var(--money-text);
+  --color-ok-text: var(--ok-text);
   --color-ok: var(--ok);
+  --color-warn: var(--warn);
   --color-danger: var(--danger);
+  --shadow-overlay: var(--overlay-shadow);
+}
+
+@theme {
+  --font-sans: "Geist Variable", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono Variable", "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* Type scale. Hero is landing-only. */
+  --text-hero: 56px;
+  --text-hero--line-height: 1.04;
+  --text-hero--letter-spacing: -0.03em;
+  --text-title: 30px;
+  --text-title--line-height: 1.2;
+  --text-title--letter-spacing: -0.02em;
+  --text-section: 22px;
+  --text-section--line-height: 1.3;
+  --text-section--letter-spacing: -0.01em;
+  --text-body: 15px;
+  --text-body--line-height: 1.6;
+  --text-ui: 14px;
+  --text-ui--line-height: 1.45;
+  --text-label: 11.5px;
+  --text-label--line-height: 1.3;
+  --text-label--letter-spacing: 0.07em;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+
+  /* Flow ribbon: the pulse crosses the ribbon in the first 85% of a 6s cycle. */
+  --animate-ribbon-x: ribbon-x 6s linear infinite;
+  --animate-ribbon-y: ribbon-y 6s linear infinite;
+  --animate-ribbon-node: ribbon-node 6s linear infinite;
+
+  @keyframes ribbon-x {
+    0% { left: 0%; opacity: 0; }
+    4% { opacity: 1; }
+    85% { left: 100%; opacity: 1; }
+    92%, 100% { left: 100%; opacity: 0; }
+  }
+  @keyframes ribbon-y {
+    0% { top: 0%; opacity: 0; }
+    4% { opacity: 1; }
+    85% { top: 100%; opacity: 1; }
+    92%, 100% { top: 100%; opacity: 0; }
+  }
+  @keyframes ribbon-node {
+    0%, 20%, 100% { border-color: var(--border); color: var(--fg-muted); }
+    3%, 10% { border-color: var(--brand); color: var(--brand); }
+  }
+}
+
+/* Uppercase label: 11.5px, medium, tracking +7%, fg-subtle. */
+@utility label {
+  font-size: var(--text-label);
+  line-height: var(--text-label--line-height);
+  letter-spacing: var(--text-label--letter-spacing);
+  font-weight: 500;
+  text-transform: uppercase;
+  color: var(--fg-subtle);
+}
+
+/* Data set in mono with digits that line up. */
+@utility data {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
 }
 
 @layer base {
   * {
     border-color: var(--border);
   }
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
   body {
     background-color: var(--bg);
     color: var(--fg);
+    font-family: var(--font-sans);
+    font-size: var(--text-ui);
+    line-height: var(--text-ui--line-height);
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  ::selection {
+    background-color: color-mix(in oklab, var(--brand) 35%, transparent);
+  }
+  :focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
+  }
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

@@ -16,6 +16,7 @@
     "resolveJsonModule": true,
     "allowImportingTsExtensions": false,
     "composite": true,
+    "paths": { "@/*": ["./src/*"] },
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo"
   },
   "include": ["src"]
