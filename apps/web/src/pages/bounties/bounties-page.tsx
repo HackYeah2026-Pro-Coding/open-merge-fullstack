@@ -1,14 +1,44 @@
-import { useOrganization, useSession, useStats } from '@/api/queries';
+import type { TokenAmount } from '@escrow/shared';
+import { useMySubmissions, useOrganization, useSession, useStats } from '@/api/queries';
+import { sumAmounts } from '@/lib/format';
 import { Container, PageHeader } from '@/components/layout/container';
 import { BountyBrowser } from '@/components/bounty/bounty-browser';
 import { Amount } from '@/components/common/amount';
 import { Skeleton } from '@/components/ui/skeleton';
 
+type HeaderStatProps = { label: string; value: TokenAmount | undefined; failed?: boolean };
+
+function HeaderStat({ label, value, failed }: HeaderStatProps) {
+  return (
+    <div className="text-left sm:text-right">
+      <p className="label">{label}</p>
+      {failed ? (
+        <p className="mt-2 text-ui text-fg-muted">Could not load</p>
+      ) : value ? (
+        <Amount value={value} animate large className="mt-1 block text-[22px] font-medium" />
+      ) : (
+        <Skeleton className="mt-2 h-6 w-36" />
+      )}
+    </div>
+  );
+}
+
+function EarnedStat({ token }: { token: TokenAmount | undefined }) {
+  const mine = useMySubmissions(true);
+  let earned: TokenAmount | undefined;
+  if (mine.data && token) {
+    const paid = mine.data.filter((m) => m.payout?.state === 'released').map((m) => m.bounty.reward);
+    earned = sumAmounts(paid, token);
+  }
+  return <HeaderStat label="Earned by you" value={earned} failed={Boolean(mine.error)} />;
+}
+
 export function BountiesPage() {
   const organization = useOrganization();
   const stats = useStats();
   const session = useSession();
-  const isMaintainer = session.data?.user?.role === 'maintainer';
+  const user = session.data?.user;
+  const isMaintainer = user?.role === 'maintainer';
 
   return (
     <Container>
@@ -41,13 +71,9 @@ export function BountiesPage() {
           </>
         }
         actions={
-          <div className="text-left sm:text-right">
-            <p className="label">Locked in escrow</p>
-            {stats.data ? (
-              <Amount value={stats.data.locked} animate large className="mt-1 block text-[22px] font-medium" />
-            ) : (
-              <Skeleton className="mt-2 h-6 w-36" />
-            )}
+          <div className="flex gap-8">
+            <HeaderStat label="Locked in escrow" value={stats.data?.locked} failed={Boolean(stats.error)} />
+            {user && !isMaintainer && <EarnedStat token={stats.data?.locked} />}
           </div>
         }
       />
