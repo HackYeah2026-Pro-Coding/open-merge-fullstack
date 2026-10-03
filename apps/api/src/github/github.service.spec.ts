@@ -49,3 +49,41 @@ describe('GithubService.createIssue', () => {
     await expect(service.createIssue(ref, issue)).rejects.toBeInstanceOf(BadGatewayException);
   });
 });
+
+describe('GithubService.request', () => {
+  function setup() {
+    const config = { get: jest.fn().mockReturnValue('secret') };
+    const fetchMock = jest.spyOn(globalThis, 'fetch');
+    return { service: new GithubService(config as unknown as ConfigService<Env, true>), fetchMock };
+  }
+
+  afterEach(() => jest.restoreAllMocks());
+
+  it('names GitHub\'s message instead of echoing the JSON body', async () => {
+    const { service, fetchMock } = setup();
+    fetchMock.mockResolvedValue(
+      new Response('{"message":"No commit found for SHA: abc","documentation_url":"https://docs.github.com/rest","status":"422"}', {
+        status: 422,
+      }),
+    );
+    await expect(service.request('POST', '/repos/acme/widgets/statuses/abc', {})).rejects.toThrow(
+      new BadGatewayException('GitHub returned 422 for POST /repos/acme/widgets/statuses/abc: No commit found for SHA: abc'),
+    );
+  });
+
+  it('keeps the start of a body that is not JSON', async () => {
+    const { service, fetchMock } = setup();
+    fetchMock.mockResolvedValue(new Response('<html>Bad gateway</html>', { status: 502 }));
+    await expect(service.request('GET', '/repos/acme/widgets')).rejects.toThrow(
+      'GitHub returned 502 for GET /repos/acme/widgets: <html>Bad gateway</html>',
+    );
+  });
+
+  it('resolves a 204 to undefined and parses other answers', async () => {
+    const { service, fetchMock } = setup();
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }));
+    await expect(service.request('DELETE', '/x')).resolves.toBeUndefined();
+    fetchMock.mockResolvedValueOnce(new Response('{"id":7,"state":"success"}', { status: 201 }));
+    await expect(service.request('POST', '/repos/acme/widgets/statuses/abc', {})).resolves.toEqual({ id: 7, state: 'success' });
+  });
+});

@@ -27,7 +27,7 @@ function ciText(ci: CiResult): { text: string; className: string } {
 
 function ReviewerColumn({ reviewer }: { reviewer: ReviewerVerdict }) {
   return (
-    <div className="min-w-0 rounded-md border bg-surface-1 p-4">
+    <div className="min-w-0 break-words rounded-md border bg-surface-1 p-4">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3">
         <h4 className="font-medium text-fg">{reviewer.reviewer}</h4>
         {reviewer.model && <span className="data text-[12px] text-fg-subtle">{reviewer.model}</span>}
@@ -47,7 +47,7 @@ function ReviewerColumn({ reviewer }: { reviewer: ReviewerVerdict }) {
                 <Icon className={cn('mt-[3px] size-3.5', className)} aria-label={label} role="img" />
                 <div className="min-w-0">
                   <p className="text-fg">{c.criterion}</p>
-                  <p className="data break-words text-[12px] text-fg-subtle">{c.evidence}</p>
+                  <p className="data text-[12px] text-fg-subtle">{c.evidence}</p>
                 </div>
               </li>
             );

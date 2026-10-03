@@ -25,6 +25,20 @@ export interface GithubIssueInfo {
   htmlUrl: string;
 }
 
+/**
+ * GitHub's explanation from an error body: its `message` field, which is what ends
+ * up in front of users, or the start of the raw text when the body is not JSON.
+ */
+function githubMessage(text: string): string {
+  try {
+    const { message } = JSON.parse(text) as { message?: unknown };
+    if (typeof message === 'string') return message;
+  } catch (error) {
+    if (!(error instanceof SyntaxError)) throw error;
+  }
+  return text.slice(0, 200);
+}
+
 /** Thin client for the GitHub REST API. */
 @Injectable()
 export class GithubService {
@@ -107,7 +121,7 @@ export class GithubService {
     });
     if (!res.ok) {
       const text = await res.text();
-      throw new BadGatewayException(`GitHub returned ${res.status} for ${method} ${path}: ${text.slice(0, 200)}`);
+      throw new BadGatewayException(`GitHub returned ${res.status} for ${method} ${path}: ${githubMessage(text)}`);
     }
     return (res.status === 204 ? undefined : await res.json()) as T;
   }

@@ -36,6 +36,7 @@ export function VerdictPill({ check, className }: { check: CommitCheck; classNam
       {check.reviewers.map((r, i) => (
         <Tooltip
           key={r.reviewer}
+          className="break-words"
           content={
             <span className="block">
               <span className="font-medium">

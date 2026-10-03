@@ -97,6 +97,30 @@ describe('GeminiReviewer', () => {
     await expect(gemini.review('p')).rejects.toThrow('SAFETY');
   });
 
+  it('retries a busy model instead of failing the review on the first 503', async () => {
+    const fetchMock = jest.spyOn(globalThis, 'fetch');
+    try {
+      fetchMock
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ error: { code: 503, message: 'high demand', status: 'UNAVAILABLE' } }), { status: 503 }),
+        )
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              candidates: [{ content: { role: 'model', parts: [{ text: JSON.stringify(OUTPUT) }] }, finishReason: 'STOP' }],
+              usageMetadata: { promptTokenCount: 3, candidatesTokenCount: 2 },
+            }),
+            { status: 200 },
+          ),
+        );
+      const gemini = new GeminiReviewer(config({ GEMINI_MODEL: 'gemini-x', GEMINI_API_KEY: 'k' }));
+      await expect(gemini.review('p')).resolves.toMatchObject({ output: OUTPUT, inputTokens: 3 });
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    } finally {
+      fetchMock.mockRestore();
+    }
+  }, 15_000);
+
   it('is unavailable without a model name or an API key', async () => {
     await expect(new GeminiReviewer(config({ GEMINI_API_KEY: 'k' })).review('p')).rejects.toThrow('GEMINI_MODEL');
     await expect(new GeminiReviewer(config({ GEMINI_MODEL: 'm' })).review('p')).rejects.toThrow(ServiceUnavailableException);

@@ -10,13 +10,13 @@ const REVIEWERS = ['claude', 'gemini'] as const;
 
 type Run = Review & { results: ReviewerResult[] };
 
-function toVerdict(reviewer: string, result: ReviewerResult | undefined, status: Review['status']): ReviewerVerdict {
+function toVerdict(reviewer: string, result: ReviewerResult | undefined, review: Run): ReviewerVerdict {
   const reviewerName = DISPLAY_NAME[reviewer] ?? reviewer;
   const empty = { model: null, confidence: null, criteria: [], risks: [] };
   if (!result) {
-    // No result row: still running, or the whole run failed before this reviewer answered.
-    return status === 'failed'
-      ? { reviewer: reviewerName, verdict: 'error', summary: null, ...empty }
+    // No result row: still running, or the whole run failed before this reviewer answered, which the run's error explains.
+    return review.status === 'failed'
+      ? { reviewer: reviewerName, verdict: 'error', summary: review.error, ...empty }
       : { reviewer: reviewerName, verdict: 'pending', summary: null, ...empty };
   }
   if (result.output === null) {
@@ -39,7 +39,7 @@ function toVerdict(reviewer: string, result: ReviewerResult | undefined, status:
 export function toCommitCheck(review: Run | undefined): CommitCheck {
   if (!review) return { state: 'not_run', reviewers: [] };
   const reviewers = REVIEWERS.map((name) =>
-    toVerdict(name, review.results.find((r) => r.reviewer === name), review.status),
+    toVerdict(name, review.results.find((r) => r.reviewer === name), review),
   );
   return { state: checkState(review, reviewers), reviewers };
 }

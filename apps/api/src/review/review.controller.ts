@@ -8,7 +8,7 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import type { Submission } from '@escrow/shared';
-import { AccountGuard } from '../auth/current-account';
+import { SignedInGuard } from '../auth/current-account';
 import { ReviewService } from './review.service';
 
 @ApiTags('review')
@@ -24,10 +24,10 @@ export class ReviewController {
   }
 
   @Post(':reviewId/rerun')
-  @UseGuards(AccountGuard)
+  @UseGuards(SignedInGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiNoContentResponse({ description: 'The review runs again in the background.' })
-  @ApiUnauthorizedResponse({ description: 'Not signed in with GitHub.' })
+  @ApiUnauthorizedResponse({ description: 'Neither the owner view is open nor a developer signed in with GitHub.' })
   @ApiNotFoundResponse({ description: 'No review with this id.' })
   @ApiConflictResponse({ description: 'The review did not end in an error, or is already running.' })
   rerun(@Param('reviewId') reviewId: string): Promise<void> {

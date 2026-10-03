@@ -50,6 +50,36 @@ export class OwnerGuard implements CanActivate {
   }
 }
 
+/**
+ * Lets a request through for whoever the app shows as signed in: the owner view,
+ * or else a developer session. An expired owner view falls back to the session,
+ * as GET /auth/session does.
+ */
+@Injectable()
+export class SignedInGuard implements CanActivate {
+  private readonly account: AccountGuard;
+
+  constructor(private readonly config: ConfigService<Env, true>) {
+    this.account = new AccountGuard(config);
+  }
+
+  canActivate(context: ExecutionContext): boolean {
+    const token = readCookie(context.switchToHttp().getRequest<Request>(), OWNER_COOKIE);
+    if (token && this.isOwnerView(token)) return true;
+    return this.account.canActivate(context);
+  }
+
+  private isOwnerView(token: string): boolean {
+    try {
+      readOwnerToken(token, this.config.get('SESSION_SECRET', { infer: true }));
+      return true;
+    } catch (error) {
+      if (error instanceof InvalidTokenError) return false;
+      throw error;
+    }
+  }
+}
+
 /** The GitHub login of the signed-in account. Use together with AccountGuard. */
 export const CurrentLogin = createParamDecorator((_data: unknown, context: ExecutionContext): string => {
   return context.switchToHttp().getRequest<{ githubLogin: string }>().githubLogin;

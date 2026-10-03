@@ -211,6 +211,20 @@ describe('ReviewService.listSubmissions', () => {
     expect(submission.retryableReviewId).toBe('rev_1');
   });
 
+  it('explains a run that failed before any reviewer answered with the run error', async () => {
+    const { service, prisma } = setup();
+    prisma.pullRequest.findMany.mockResolvedValue([
+      pull([review({ status: 'failed', ciState: null, results: [], error: 'Interrupted by a server restart' })]),
+    ]);
+    const [submission] = await service.listSubmissions('issue_1');
+    expect(submission.check.state).toBe('error');
+    expect(submission.check.reviewers.map((r) => [r.verdict, r.summary])).toEqual([
+      ['error', 'Interrupted by a server restart'],
+      ['error', 'Interrupted by a server restart'],
+    ]);
+    expect(submission.retryableReviewId).toBe('rev_1');
+  });
+
   it('shows failed CI as a failed check even when both reviewers approve', async () => {
     const { service, prisma } = setup();
     prisma.pullRequest.findMany.mockResolvedValue([pull([review({ ciState: 'failed', failedJobs: ['test'] })])]);
