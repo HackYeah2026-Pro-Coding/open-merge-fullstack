@@ -101,13 +101,15 @@ are destructive:
 ### Setting up Supabase
 
 In the dashboard: **Connect** → **Session pooler**. Copy that string into
-`SUPABASE_DATABASE_URL` in `.env`, then:
+`SUPABASE_DATABASE_URL` in `.env`, then apply the existing migrations and seed:
 
 ```bash
-pnpm use:supabase
-pnpm db:migrate
-pnpm db:seed
+DB_TARGET=supabase pnpm --filter @escrow/api run db:deploy
+DB_TARGET=supabase pnpm db:seed
 ```
+
+Setting `DB_TARGET` on the command line overrides `.env` for that one command,
+so you never forget to switch back to local.
 
 **Pick the session pooler, not "Direct connection".** Direct connections are
 IPv6-only unless you buy the IPv4 add-on, so on most networks they simply time
@@ -121,6 +123,49 @@ while the app keeps the pooled connection. Prisma 7 has no `directUrl` setting �
 this split works because the CLI reads `prisma.config.ts` while the app builds
 its own driver adapter.
 
+`SUPABASE_DIRECT_URL` is the same string with the port changed to 5432 and any
+`pgbouncer=true` removed:
+
+```
+SUPABASE_DATABASE_URL=postgresql://postgres.<ref>:<password>@aws-<n>-<region>.pooler.supabase.com:6543/postgres
+SUPABASE_DIRECT_URL=postgresql://postgres.<ref>:<password>@aws-<n>-<region>.pooler.supabase.com:5432/postgres
+```
+
+**If a Prisma command against Supabase hangs with no output, this is why.**
+It is talking to the transaction pooler, which never answers the migration
+handshake, so the command waits forever instead of failing.
+
+### Migrating Supabase
+
+Create migrations against the local database, then apply the finished files to
+Supabase. Never run `prisma migrate dev` against Supabase: when it detects drift
+it offers to reset the database, and Supabase is shared.
+
+```bash
+# 1. Edit apps/api/prisma/schema.prisma, then create and apply the migration locally
+pnpm db:migrate --name describe_the_change
+pnpm prisma:generate          # Prisma 7's migrate dev does not regenerate the client
+pnpm db:seed && pnpm typecheck
+
+# 2. Read the generated SQL in apps/api/prisma/migrations/<timestamp>_<name>/
+#    Look for DROP TABLE / DROP COLUMN, which delete data.
+
+# 3. Apply it to Supabase
+DB_TARGET=supabase pnpm --filter @escrow/api exec prisma migrate status
+DB_TARGET=supabase pnpm --filter @escrow/api run db:deploy
+
+# 4. Confirm Supabase matches the schema
+DB_TARGET=supabase pnpm --filter @escrow/api exec prisma migrate diff \
+  --from-config-datasource --to-schema prisma/schema.prisma --exit-code
+```
+
+`migrate status` lists what will be applied. `migrate deploy` applies only the
+migration files that are new, in order, and never resets anything. The final
+`migrate diff` prints `No difference detected.` when the two agree.
+
+Commit the migration folder with the schema change. Your teammate gets the same
+schema locally by pulling and running `pnpm db:migrate`.
+
 ### If SSL fails
 
 `sslmode=require` is treated as full certificate verification by this driver
@@ -133,8 +178,8 @@ chain`, change it to `sslmode=no-verify`.
 start. And `pnpm db:nuke` only ever touches the local container; it cannot
 delete anything on Supabase.
 
-Supabase is shared, so a migration you run lands on your teammate too. That is
-the point — it keeps one schema between you — but run `pnpm db:migrate` on a
+Supabase is shared, so a migration you deploy lands on your teammate too. That is
+the point — it keeps one schema between you — but deploy only migrations from a
 branch you have both agreed on.
 
 ## Deploying the API to Render
@@ -170,11 +215,11 @@ out of production entirely. Render injects `PORT` on its own and the app binds
 The image deliberately ships without the Prisma CLI — the generated client is
 TypeScript that `nest build` already compiled into `dist`, so production needs
 only `@prisma/client` and the `pg` driver. Run migrations from your machine
-against the same database:
+against the same database, as described in
+[Migrating Supabase](#migrating-supabase):
 
 ```bash
-pnpm use:supabase
-pnpm db:migrate
+DB_TARGET=supabase pnpm --filter @escrow/api run db:deploy
 ```
 
 Since Supabase is both your shared development database and the production one,

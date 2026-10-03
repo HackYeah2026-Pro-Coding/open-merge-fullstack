@@ -18,13 +18,79 @@ datasource db {
   provider = "postgresql"
 }
 
-model User {
+/// A developer's GitHub account. The wallet is optional until they link one.
+model GithubAccount {
   id          String  @id @default(cuid())
   githubId    Int     @unique
   githubLogin String  @unique
   name        String?
   avatarUrl   String?
+  walletId    String? @unique
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  wallet     Wallet?  @relation(fields: [walletId], references: [id])
+  paidIssues Issue[]
+  payouts    Payout[]
+}
+
+model Wallet {
+  id       String   @id @default(cuid())
+  /// Base58 Solana public key.
+  address  String   @unique
+  linkedAt DateTime @default(now()) @db.Timestamptz(3)
+
+  account GithubAccount?
+}
+
+model GithubRepo {
+  id             String @id @default(cuid())
+  /// "owner/name", as GitHub shows it.
+  githubRepoName String @unique
+  githubRepoUrl  String
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  issues Issue[]
+}
+
+model Issue {
+  id           String   @id @default(cuid())
+  title        String
+  body         String
+  labels       String[] @default([])
+  /// Integer base units of the reward token, never a float.
+  rewardAmount BigInt
+  rewardSymbol String
+  githubRepoId String
+  paidOutToId  String?
+
+  paidOutAt DateTime? @db.Timestamptz(3)
+  closedAt  DateTime? @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime  @updatedAt @db.Timestamptz(3)
+
+  githubRepo GithubRepo     @relation(fields: [githubRepoId], references: [id])
+  paidOutTo  GithubAccount? @relation(fields: [paidOutToId], references: [id])
+  payout     Payout?
+
+  @@index([githubRepoId])
+  @@index([paidOutToId])
+}
+
+model Payout {
+  id                String  @id @default(cuid())
+  issueId           String  @unique
+  recipientGithubId Int
+  walletAddress     String?
+
+  createdAt  DateTime  @default(now()) @db.Timestamptz(3)
+  releasedAt DateTime? @db.Timestamptz(3)
+
+  issue     Issue         @relation(fields: [issueId], references: [id])
+  recipient GithubAccount @relation(fields: [recipientGithubId], references: [githubId])
+
+  @@index([recipientGithubId])
 }

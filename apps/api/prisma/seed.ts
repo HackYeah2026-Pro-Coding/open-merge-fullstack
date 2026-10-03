@@ -14,7 +14,7 @@ const prisma = new PrismaClient({
 
 /** Idempotent: upserts on a natural key, so re-running converges instead of duplicating. */
 async function main(): Promise<void> {
-  await prisma.user.upsert({
+  await prisma.githubAccount.upsert({
     where: { githubId: 1001 },
     update: {},
     create: {
@@ -25,7 +25,7 @@ async function main(): Promise<void> {
     },
   });
 
-  console.log(`Seed complete: ${await prisma.user.count()} user(s)`);
+  console.log(`Seed complete: ${await prisma.githubAccount.count()} account(s)`);
 }
 
 main()
