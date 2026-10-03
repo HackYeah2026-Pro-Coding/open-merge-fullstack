@@ -1,21 +1,28 @@
 import type { TokenAmount } from '@escrow/shared';
 import { useMySubmissions, useOrganization, useSession, useStats } from '@/api/queries';
+import { cn } from '@/lib/cn';
 import { sumAmounts } from '@/lib/format';
 import { Container, PageHeader } from '@/components/layout/container';
 import { BountyBrowser } from '@/components/bounty/bounty-browser';
 import { Amount } from '@/components/common/amount';
 import { Skeleton } from '@/components/ui/skeleton';
 
-type HeaderStatProps = { label: string; value: TokenAmount | undefined; failed?: boolean };
+type HeaderStatProps = {
+  label: string;
+  value: TokenAmount | undefined;
+  failed?: boolean;
+  /** Overrides the amount's colour, e.g. green for money already paid out. */
+  amountClassName?: string;
+};
 
-function HeaderStat({ label, value, failed }: HeaderStatProps) {
+function HeaderStat({ label, value, failed, amountClassName }: HeaderStatProps) {
   return (
     <div className="text-left sm:text-right">
       <p className="label">{label}</p>
       {failed ? (
         <p className="mt-2 text-ui text-fg-muted">Could not load</p>
       ) : value ? (
-        <Amount value={value} animate large className="mt-1 block text-[22px] font-medium" />
+        <Amount value={value} animate large className={cn('mt-1 block text-[22px] font-medium', amountClassName)} />
       ) : (
         <Skeleton className="mt-2 h-6 w-36" />
       )}
@@ -30,7 +37,7 @@ function EarnedStat({ token }: { token: TokenAmount | undefined }) {
     const paid = mine.data.filter((m) => m.payout?.state === 'released').map((m) => m.bounty.reward);
     earned = sumAmounts(paid, token);
   }
-  return <HeaderStat label="Earned by you" value={earned} failed={Boolean(mine.error)} />;
+  return <HeaderStat label="Earned by you" value={earned} failed={Boolean(mine.error)} amountClassName="text-ok" />;
 }
 
 export function BountiesPage() {
