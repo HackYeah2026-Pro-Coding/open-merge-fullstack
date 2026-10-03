@@ -3,7 +3,20 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Escrow</title>
+    <meta name="description" content="Paid bounties for open-source issues. The reward is locked when the issue is posted and released when the pull request merges." />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>OpenMerge</title>
+    <script>
+      // Applied before first paint so a light-theme user never sees a dark flash.
+      try {
+        if (localStorage.getItem('openmerge.theme') === 'light') {
+          document.documentElement.dataset.theme = 'light';
+        }
+      } catch (error) {
+        // Storage blocked (private mode, sandboxed iframe): stay on the dark default.
+        console.warn('Theme preference unavailable', error);
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
