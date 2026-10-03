@@ -1,6 +1,6 @@
 import { Link, useSearchParams } from 'react-router';
 import type { RepositorySummary } from '@escrow/shared';
-import { BookMarked, ChevronRight, FolderGit2, Search, SearchX } from 'lucide-react';
+import { BookMarked, ChevronRight, FolderGit2, Plus, Search, SearchX } from 'lucide-react';
 import { useRepositories } from '@/api/queries';
 import { cn } from '@/lib/cn';
 import { formatExact, formatRelative, pluralize } from '@/lib/format';
@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Amount } from '@/components/common/amount';
 import { EmptyState, ErrorState } from '@/components/common/states';
+import { AddRepositoryDialog } from './add-repository-dialog';
 
 /** Icon, repository, open bounties, locked reward, last activity, chevron: the desktop columns. */
 const COLUMNS = 'sm:grid-cols-[16px_minmax(0,1fr)_88px_150px_96px_16px]';
@@ -86,7 +87,7 @@ function RowSkeleton() {
   );
 }
 
-/** Every repository of the organization; each row opens its dashboard. Search lives in the URL. */
+/** Every added repository of the organization; each row opens its dashboard. Search lives in the URL. */
 export function RepositoryList() {
   const repos = useRepositories();
   const [params, setParams] = useSearchParams();
@@ -109,16 +110,24 @@ export function RepositoryList() {
 
   return (
     <div>
-      <div className="relative mb-3 sm:max-w-xs">
-        <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-fg-subtle" aria-hidden />
-        <Input
-          type="search"
-          value={q}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Find a repository"
-          aria-label="Find a repository"
-          className="pl-9"
-        />
+      <div className="mb-3 flex items-center gap-2">
+        <div className="relative min-w-0 flex-1 sm:max-w-xs">
+          <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-fg-subtle" aria-hidden />
+          <Input
+            type="search"
+            value={q}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Find a repository"
+            aria-label="Find a repository"
+            className="pl-9"
+          />
+        </div>
+        <AddRepositoryDialog>
+          <Button className="ml-auto">
+            <Plus />
+            Add repository
+          </Button>
+        </AddRepositoryDialog>
       </div>
 
       <div className="overflow-hidden rounded-lg border">
@@ -160,7 +169,15 @@ export function RepositoryList() {
             ) : (
               <EmptyState
                 icon={FolderGit2}
-                title="OpenMerge cannot see any repositories in this organization yet. Grant it access on GitHub, then reload."
+                title="No repositories added yet. Add one from GitHub to post bounties on it."
+                action={
+                  <AddRepositoryDialog>
+                    <Button size="sm">
+                      <Plus />
+                      Add repository
+                    </Button>
+                  </AddRepositoryDialog>
+                }
                 className="border-0"
               />
             )}

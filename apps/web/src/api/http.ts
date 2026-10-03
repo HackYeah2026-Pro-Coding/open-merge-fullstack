@@ -44,6 +44,8 @@ export const httpApi: ApiClient = {
   listActivity: (repo) => request(`/org/activity${repo ? `?repo=${encodeURIComponent(repo)}` : ''}`),
   listRepositories: () => request('/org/repos'),
   getRepository: (name) => request(`/org/repos/${encodeURIComponent(name)}`),
+  listGithubRepositories: () => request('/org/github/repos'),
+  addRepository: (name) => request('/org/repos', { method: 'POST', body: JSON.stringify({ name }) }),
 
   listBounties: (query) => request(`/bounties${toSearch(query)}`),
   getBounty: (repo, issueNumber) => request(`/bounties/${encodeURIComponent(repo)}/${issueNumber}`),

@@ -4,6 +4,7 @@ import { ApiError, type ApiClient } from '../client';
 import { delay, getDb, saveDb } from './db';
 import { MOCK_DEVELOPER_ID } from './seed';
 import { event, fake } from './factory';
+import { githubRepoMockApi } from './github-repos';
 import { checkOf, reviewer } from './reviews';
 import { releaseHeldPayouts } from './simulate';
 import type { MockBounty, MockRepository } from './types';
@@ -134,6 +135,8 @@ const rawMockApi: ApiClient = {
     settleAll();
     return toRepositorySummary(findRepository(name), getDb().bounties);
   },
+
+  ...githubRepoMockApi,
 
   async listBounties(query) {
     await delay();

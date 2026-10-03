@@ -41,3 +41,20 @@ export interface RepositorySummary extends RepositoryRef {
   /** Latest bounty event in the repository, null when it has none. */
   lastActivityAt: string | null;
 }
+
+/** A repository of the organization as GitHub lists it, offered when adding one to OpenMerge. */
+export interface GithubRepository extends RepositoryRef {
+  description: string | null;
+  isPrivate: boolean;
+  /** Archived repositories take no new issues, so they cannot be added. */
+  archived: boolean;
+  /** Latest push, null for an empty repository. */
+  pushedAt: string | null;
+  /** Already added: it shows on the dashboard and can carry bounties. */
+  added: boolean;
+}
+
+export interface AddRepositoryInput {
+  /** Repository name within the organization, e.g. "taskq". */
+  name: string;
+}
