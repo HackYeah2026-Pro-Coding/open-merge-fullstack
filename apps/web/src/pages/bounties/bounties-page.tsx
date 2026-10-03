@@ -11,10 +11,10 @@ export function BountiesPage() {
   return (
     <Container>
       <PageHeader
-        title="Bounties"
+        title="Your repositories"
         description={
           <>
-            Issues across the{' '}
+            Solve issues across the{' '}
             {organization.data ? (
               <a
                 href={organization.data.url}
@@ -27,7 +27,7 @@ export function BountiesPage() {
             ) : (
               <span aria-hidden className="inline-block h-4 w-40 animate-pulse rounded-sm bg-surface-2 align-middle" />
             )}{' '}
-            repositories with a reward locked up front. Open a pull request that resolves one; the merge releases the payment.
+            repositories to claim upfront rewards. Submit a pull request that fixes an issue—once merged, your payment is released.
           </>
         }
         actions={

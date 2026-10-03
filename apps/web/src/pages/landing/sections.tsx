@@ -1,7 +1,10 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, Check } from 'lucide-react';
 import { useOrganization, useStats } from '@/api/queries';
+import { env } from '@/lib/env';
+import { addressUrl } from '@/lib/explorer';
+import tokenImage from '@/assets/omt-token.webp';
 import { Container } from '@/components/layout/container';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -57,29 +60,61 @@ export function HowItWorks() {
   );
 }
 
-export function TrustStatement() {
+const TOKEN_POINTS = [
+  'Every bounty is locked and paid out in OMT.',
+  'An on-chain program releases the reward. Our servers cannot move it.',
+  'Every lock and payout has a signature anyone can look up.',
+];
+
+export function TokenCta() {
   return (
     <section className="border-b py-20 sm:py-28">
-      <Container className="grid gap-8 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] lg:gap-16">
-        <p className="text-[28px] leading-[1.2] font-semibold tracking-[-0.02em] text-balance sm:text-[36px]">
-          The party that holds the money does not decide who gets it.
-        </p>
-        <div className="space-y-4 text-body text-fg-muted lg:pt-2">
-          <p>
-            Release conditions are enforced by an on-chain program, not by OpenMerge&apos;s servers. Our backend can read the
-            state of a bounty. It cannot move the reward.
-          </p>
-          <p>Every lock and every payout is a transaction with a signature anyone can look up.</p>
-          <p>
-            Rewards are paid in OMT, our own token on Solana.{' '}
-            <Link
-              to="/token"
-              className="inline-flex items-center gap-1 font-medium text-fg underline-offset-4 hover:underline"
-            >
-              About the token
-              <ArrowRight className="size-3.5" aria-hidden />
-            </Link>
-          </p>
+      <Container>
+        <div className="grid items-center gap-10 rounded-lg border bg-surface-1 p-6 sm:p-10 md:grid-cols-[minmax(0,1fr)_auto] lg:gap-16 lg:p-12">
+          <div>
+            <p className="label">OMT on Solana</p>
+            <h2 className="mt-4 text-[26px] font-semibold tracking-[-0.02em] sm:text-title">Check out our token</h2>
+            <p className="mt-3 max-w-xl text-body text-fg-muted">
+              Rewards are paid in OpenMerge Token, our own token on Solana. The party that holds the money does not decide
+              who gets it.
+            </p>
+            <ul className="mt-6 max-w-xl space-y-3">
+              {TOKEN_POINTS.map((point) => (
+                <li key={point} className="flex gap-3 text-body text-fg-muted">
+                  <Check className="mt-1 size-4 shrink-0 text-fg-subtle" aria-hidden />
+                  {point}
+                </li>
+              ))}
+            </ul>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Button asChild variant="primary" size="lg">
+                <Link to="/token">
+                  See the token
+                  <ArrowRight />
+                </Link>
+              </Button>
+              <Button asChild size="lg">
+                <a href={addressUrl(env.tokenMint)} target="_blank" rel="noreferrer">
+                  View on Solana Explorer
+                  <ArrowUpRight />
+                </a>
+              </Button>
+            </div>
+          </div>
+          <Link
+            to="/token"
+            aria-label="OpenMerge Token (OMT)"
+            className="hidden w-56 justify-self-center rounded-lg border transition-colors duration-120 hover:border-fg-subtle md:block lg:w-64"
+          >
+            <img
+              src={tokenImage}
+              alt=""
+              width={640}
+              height={640}
+              loading="lazy"
+              className="w-full rounded-[inherit]"
+            />
+          </Link>
         </div>
       </Container>
     </section>
