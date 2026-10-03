@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { DB_TARGETS, resolveDatabaseUrl } from './database-url';
 
 /**
  * Validated once at boot, so a missing variable is a clear startup error instead
@@ -7,11 +8,18 @@ import { z } from 'zod';
 export const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().positive().default(3000),
-  DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
   WEB_ORIGIN: z.string().url().default('http://localhost:5173'),
+
+  // Which database to talk to. The URLs live side by side so switching is a
+  // one-word edit, never a connection-string edit. See src/config/database-url.ts.
+  DB_TARGET: z.enum(DB_TARGETS).default('local'),
+  LOCAL_DATABASE_URL: z.string().optional(),
+  SUPABASE_DATABASE_URL: z.string().optional(),
+  SUPABASE_DIRECT_URL: z.string().optional(),
 });
 
-export type Env = z.infer<typeof envSchema>;
+/** DATABASE_URL is derived from DB_TARGET rather than set directly. */
+export type Env = z.infer<typeof envSchema> & { DATABASE_URL: string };
 
 export function validateEnv(raw: Record<string, unknown>): Env {
   const result = envSchema.safeParse(raw);
@@ -21,5 +29,8 @@ export function validateEnv(raw: Record<string, unknown>): Env {
       .join('\n');
     throw new Error(`Invalid environment configuration:\n${issues}\n\nSee .env.example.`);
   }
-  return result.data;
+
+  // Throws with an actionable message naming the variable that is missing.
+  const DATABASE_URL = resolveDatabaseUrl(raw as Record<string, string | undefined>);
+  return { ...result.data, DATABASE_URL };
 }

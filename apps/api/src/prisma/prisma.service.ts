@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../generated/prisma/client';
 import type { Env } from '../config/env';
+import { describeDbTarget } from '../config/database-url';
 
 /**
  * Prisma 7 has no Rust query engine: the client talks to Postgres through a
@@ -21,7 +22,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
 
   async onModuleInit(): Promise<void> {
     await this.$connect();
-    this.logger.log('Connected to Postgres');
+    this.logger.log(`Connected to Postgres — ${describeDbTarget()}`);
   }
 
   async onModuleDestroy(): Promise<void> {

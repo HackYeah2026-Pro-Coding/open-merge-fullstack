@@ -78,6 +78,122 @@ apps/web/            Vite + React
 packages/shared/     types shared by API and web
 ```
 
+## Switching between local Postgres and Supabase
+
+Both connection strings live side by side in `.env`; `DB_TARGET` picks one. The
+app, the Prisma CLI and the seed all read it through the same resolver
+(`apps/api/src/config/database-url.ts`), so they can never disagree about which
+database is in use.
+
+```bash
+pnpm db:target        # which one am I on?
+pnpm use:supabase     # switch
+pnpm use:local        # switch back
+```
+
+Every Prisma command prints its target before doing anything, because migrations
+are destructive:
+
+```
+[prisma] target: supabase (aws-0-eu-central-1.pooler.supabase.com:5432)
+```
+
+### Setting up Supabase
+
+In the dashboard: **Connect** → **Session pooler**. Copy that string into
+`SUPABASE_DATABASE_URL` in `.env`, then:
+
+```bash
+pnpm use:supabase
+pnpm db:migrate
+pnpm db:seed
+```
+
+**Pick the session pooler, not "Direct connection".** Direct connections are
+IPv6-only unless you buy the IPv4 add-on, so on most networks they simply time
+out. The session pooler (port 5432) is IPv4 on every plan and supports prepared
+statements, which means one URL serves both the running app and `prisma migrate`.
+
+Use `SUPABASE_DIRECT_URL` only if you deliberately point `SUPABASE_DATABASE_URL`
+at the **transaction** pooler (port 6543). That one cannot run migrations, so put
+a session-pooler URL in `SUPABASE_DIRECT_URL` and the Prisma CLI will use it
+while the app keeps the pooled connection. Prisma 7 has no `directUrl` setting —
+this split works because the CLI reads `prisma.config.ts` while the app builds
+its own driver adapter.
+
+### If SSL fails
+
+`sslmode=require` is treated as full certificate verification by this driver
+(not libpq's weaker meaning). If you get `self-signed certificate in certificate
+chain`, change it to `sslmode=no-verify`.
+
+### Caveats
+
+`pnpm db:up` is a no-op when `DB_TARGET=supabase` — there is no container to
+start. And `pnpm db:nuke` only ever touches the local container; it cannot
+delete anything on Supabase.
+
+Supabase is shared, so a migration you run lands on your teammate too. That is
+the point — it keeps one schema between you — but run `pnpm db:migrate` on a
+branch you have both agreed on.
+
+## Deploying the API to Render
+
+`apps/api/Dockerfile` builds a production image of the API alone. `render.yaml`
+is a Blueprint that wires it up; you can also create the service by hand.
+
+**Build context is the repository root, not `apps/api`** — the pnpm workspace
+needs the root manifests and lockfile. In the Render dashboard:
+
+| Setting | Value |
+|---|---|
+| Runtime | Docker |
+| Dockerfile Path | `./apps/api/Dockerfile` |
+| Docker Build Context Directory | `.` |
+| Health Check Path | `/api/health` |
+
+Environment variables on the service:
+
+| Variable | Value |
+|---|---|
+| `DATABASE_URL` | the Supabase **session pooler** string |
+| `WEB_ORIGIN` | origin of the deployed frontend, for CORS |
+| `NODE_ENV` | `production` |
+
+`DATABASE_URL` wins over `DB_TARGET` whenever it is set, so a deployed container
+needs exactly one database variable and the local `local`/`supabase` switch stays
+out of production entirely. Render injects `PORT` on its own and the app binds
+`0.0.0.0`, which is what makes it reachable from outside the container.
+
+### Migrations
+
+The image deliberately ships without the Prisma CLI — the generated client is
+TypeScript that `nest build` already compiled into `dist`, so production needs
+only `@prisma/client` and the `pg` driver. Run migrations from your machine
+against the same database:
+
+```bash
+pnpm use:supabase
+pnpm db:migrate
+```
+
+Since Supabase is both your shared development database and the production one,
+this is a single step rather than a separate release pipeline. If you later split
+them, add the Prisma CLI to the runtime stage and set a Render pre-deploy command.
+
+### Local verification before pushing
+
+```bash
+docker build -f apps/api/Dockerfile -t escrow-api .
+docker run --rm -p 3000:3000 -e DATABASE_URL="<your url>" escrow-api
+curl localhost:3000/api/health
+```
+
+### Note on the free plan
+
+Free Render services sleep after inactivity and take ~50s to wake. Hit the URL a
+few minutes before a demo, or keep a browser tab open on it.
+
 ## Things worth knowing
 
 **Postgres runs on host port 55432**, not 5432, so it does not collide with a

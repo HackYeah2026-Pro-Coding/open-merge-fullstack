@@ -1,0 +1,26 @@
+**/node_modules
+**/dist
+**/build
+**/.turbo
+**/coverage
+**/*.tsbuildinfo
+
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+
+# Prisma 7 regenerates this during the image build.
+apps/api/src/generated
+
+# The API image does not serve the SPA.
+apps/web
+
+.claude
+.agents
+skills-lock.json
+README.md
+docker-compose.yml
+**/.DS_Store
+**/*.log

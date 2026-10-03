@@ -21,7 +21,9 @@ async function bootstrap(): Promise<void> {
   app.enableShutdownHooks();
 
   const port = config.get('PORT', { infer: true });
-  await app.listen(port);
+  // 0.0.0.0 rather than loopback: required for the process to be reachable
+  // from outside its container on Render and friends.
+  await app.listen(port, '0.0.0.0');
   new Logger('Bootstrap').log(`API listening on http://localhost:${port}/api`);
 }
 

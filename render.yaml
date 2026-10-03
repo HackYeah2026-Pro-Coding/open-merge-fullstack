@@ -1,0 +1,22 @@
+# Render Blueprint. Dashboard -> New -> Blueprint, point it at this repository.
+# Everything here can also be set by hand when creating a Web Service.
+services:
+  - type: web
+    name: escrow-api
+    runtime: docker
+    plan: free
+    region: frankfurt
+    # The build context is the repository root so the pnpm workspace resolves.
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Supabase session-pooler URL. Set in the dashboard, never in this file.
+      - key: DATABASE_URL
+        sync: false
+      # Origin of the deployed frontend, for CORS.
+      - key: WEB_ORIGIN
+        sync: false

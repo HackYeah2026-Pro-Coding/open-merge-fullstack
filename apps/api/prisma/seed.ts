@@ -2,11 +2,14 @@ import * as path from 'node:path';
 import * as dotenv from 'dotenv';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../src/generated/prisma/client';
+import { describeDbTarget, resolveDatabaseUrl } from '../src/config/database-url';
 
 dotenv.config({ path: path.resolve(__dirname, '../../../.env'), quiet: true });
 
+console.log(`[seed] target: ${describeDbTarget()}`);
+
 const prisma = new PrismaClient({
-  adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
+  adapter: new PrismaPg({ connectionString: resolveDatabaseUrl() }),
 });
 
 /** Idempotent: upserts on a natural key, so re-running converges instead of duplicating. */
