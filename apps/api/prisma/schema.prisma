@@ -1,0 +1,30 @@
+// Minimal starting schema.
+//
+// Prisma 7 specifics worth knowing before you edit this file:
+//   * the client is generated into ../src/generated/prisma (gitignored, NOT node_modules)
+//   * moduleFormat/importFileExtension make the output compile with NestJS' CommonJS tsc build
+//   * the datasource URL lives in prisma.config.ts, not here
+//   * enums must be written across multiple lines — `enum X { A B }` is a syntax error
+
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "cjs"
+  runtime             = "nodejs"
+  importFileExtension = ""
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id          String  @id @default(cuid())
+  githubId    Int     @unique
+  githubLogin String  @unique
+  name        String?
+  avatarUrl   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

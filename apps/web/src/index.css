@@ -1,0 +1,57 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens. Dark is the default; both themes are defined from day one so the
+ * design pass later only changes values here, never component code.
+ * Toggle with  document.documentElement.dataset.theme = "light" | "dark".
+ */
+:root {
+  --bg: oklch(0.145 0.005 265);
+  --surface-1: oklch(0.185 0.006 265);
+  --surface-2: oklch(0.225 0.007 265);
+  --border: oklch(0.3 0.008 265);
+  --fg: oklch(0.97 0.002 265);
+  --fg-muted: oklch(0.72 0.006 265);
+  --fg-subtle: oklch(0.55 0.006 265);
+  --brand: oklch(0.62 0.2 292);
+  --ok: oklch(0.72 0.17 152);
+  --danger: oklch(0.65 0.21 20);
+}
+
+:root[data-theme="light"] {
+  --bg: oklch(0.995 0 0);
+  --surface-1: oklch(0.975 0.002 265);
+  --surface-2: oklch(0.955 0.003 265);
+  --border: oklch(0.9 0.004 265);
+  --fg: oklch(0.205 0.005 265);
+  --fg-muted: oklch(0.47 0.008 265);
+  --fg-subtle: oklch(0.6 0.008 265);
+  --brand: oklch(0.53 0.21 292);
+  --ok: oklch(0.56 0.15 152);
+  --danger: oklch(0.56 0.2 20);
+}
+
+/* Expose the tokens to Tailwind as bg-bg, text-fg, border-border, text-brand, ... */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface-1: var(--surface-1);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-fg: var(--fg);
+  --color-fg-muted: var(--fg-muted);
+  --color-fg-subtle: var(--fg-subtle);
+  --color-brand: var(--brand);
+  --color-ok: var(--ok);
+  --color-danger: var(--danger);
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  body {
+    background-color: var(--bg);
+    color: var(--fg);
+    -webkit-font-smoothing: antialiased;
+  }
+}

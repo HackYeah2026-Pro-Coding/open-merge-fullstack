@@ -1,0 +1,22 @@
+node_modules/
+dist/
+build/
+.turbo/
+coverage/
+*.tsbuildinfo
+
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Prisma 7 generates the client into source — never commit it
+apps/api/src/generated/
+
+.DS_Store
+*.log
+npm-debug.log*
+pnpm-debug.log*
+.idea/
+.vscode/*
+!.vscode/extensions.json

@@ -1,0 +1,22 @@
+packages:
+  - apps/*
+  - packages/*
+
+# pnpm 10 blocks dependency install scripts by default; these are the ones we want.
+onlyBuiltDependencies:
+  - '@nestjs/core'
+  - '@prisma/client'
+  - esbuild
+  - prisma
+  - unrs-resolver
+
+# Prisma 7 is Rust-engine-free, so the engine binaries are not needed at runtime.
+ignoredBuiltDependencies:
+  - '@parcel/watcher'
+  - '@prisma/engines'
+
+peerDependencyRules:
+  allowedVersions:
+    # @nestjs/schematics asks for TypeScript >=6; 5.9.3 works for `nest build`
+    # and `nest generate`, and is what the wider ecosystem is tested against.
+    '@nestjs/schematics>typescript': '5'

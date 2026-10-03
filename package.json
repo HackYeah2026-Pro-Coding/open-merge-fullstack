@@ -1,0 +1,27 @@
+{
+  "name": "escrow",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@10.26.2",
+  "engines": {
+    "node": ">=20.19"
+  },
+  "scripts": {
+    "dev": "pnpm run db:up && pnpm -r --parallel --if-present run dev",
+    "dev:api": "pnpm --filter @escrow/api run dev",
+    "dev:web": "pnpm --filter @escrow/web run dev",
+    "build": "pnpm -r --if-present run build",
+    "typecheck": "pnpm -r --if-present run typecheck",
+    "lint": "pnpm -r --if-present run lint",
+    "test": "pnpm -r --if-present run test",
+    "db:up": "docker compose up -d --wait postgres",
+    "db:down": "docker compose down",
+    "db:nuke": "docker compose down -v",
+    "db:studio": "pnpm --filter @escrow/api run db:studio",
+    "db:migrate": "pnpm --filter @escrow/api run db:migrate",
+    "db:reset": "pnpm --filter @escrow/api run db:reset",
+    "db:seed": "pnpm --filter @escrow/api run db:seed",
+    "prisma:generate": "pnpm --filter @escrow/api run prisma:generate",
+    "setup": "pnpm install && pnpm run db:up && pnpm run db:migrate && pnpm run db:seed"
+  }
+}
