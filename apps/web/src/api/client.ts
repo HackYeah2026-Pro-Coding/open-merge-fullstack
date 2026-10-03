@@ -4,6 +4,7 @@ import type {
   BountyListQuery,
   BountySummary,
   CreateBountyInput,
+  GithubRepository,
   LinkWalletInput,
   MySubmission,
   Organization,
@@ -39,6 +40,10 @@ export interface ApiClient {
   /** Every repository of the organization, most recently active first. */
   listRepositories(): Promise<RepositorySummary[]>;
   getRepository(name: string): Promise<RepositorySummary>;
+  /** Repositories of the organization on GitHub, marked when already added. Owner only. */
+  listGithubRepositories(): Promise<GithubRepository[]>;
+  /** Adds a repository of the organization, so it shows on the dashboard and can carry bounties. Owner only. */
+  addRepository(name: string): Promise<RepositorySummary>;
 
   listBounties(query: BountyListQuery): Promise<BountySummary[]>;
   getBounty(repo: string, issueNumber: number): Promise<Bounty>;

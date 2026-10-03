@@ -1,5 +1,5 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { Bounty, BountyListQuery, CreateBountyInput, User } from '@escrow/shared';
+import type { Bounty, BountyListQuery, CreateBountyInput, GithubRepository, User } from '@escrow/shared';
 import { api } from './index';
 
 export const queryKeys = {
@@ -9,6 +9,7 @@ export const queryKeys = {
   activity: (repo?: string) => ['activity', repo ?? null] as const,
   repositories: ['repositories'] as const,
   repository: (name: string) => ['repository', name] as const,
+  githubRepositories: ['github-repositories'] as const,
   bounties: (query: BountyListQuery) => ['bounties', query] as const,
   bounty: (repo: string, issueNumber: number) => ['bounty', repo, issueNumber] as const,
   mySubmissions: ['me', 'submissions'] as const,
@@ -39,6 +40,27 @@ export function useRepositories() {
 
 export function useRepository(name: string) {
   return useQuery({ queryKey: queryKeys.repository(name), queryFn: () => api.getRepository(name) });
+}
+
+export function useGithubRepositories() {
+  return useQuery({ queryKey: queryKeys.githubRepositories, queryFn: () => api.listGithubRepositories() });
+}
+
+/** Adds a repository from GitHub; it is marked added straight away and the dashboard refreshes. */
+export function useAddRepository() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (name: string) => api.addRepository(name),
+    onSuccess: (repo) => {
+      client.setQueryData<GithubRepository[]>(queryKeys.githubRepositories, (list) =>
+        list?.map((r) => (r.fullName.toLowerCase() === repo.fullName.toLowerCase() ? { ...r, added: true } : r)),
+      );
+      client.setQueryData(queryKeys.repository(repo.name), repo);
+      for (const queryKey of [queryKeys.repositories, queryKeys.stats]) void client.invalidateQueries({ queryKey });
+    },
+    // A conflict means the list is out of date, e.g. the repository was added in another tab.
+    onError: () => client.invalidateQueries({ queryKey: queryKeys.githubRepositories }),
+  });
 }
 
 export function useBounties(query: BountyListQuery) {

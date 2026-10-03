@@ -17,6 +17,7 @@ export interface GithubRepoInfo {
   htmlUrl: string;
   description: string | null;
   isPrivate: boolean;
+  archived: boolean;
 }
 
 /** The fields of GitHub's issue object this app uses. */
@@ -71,12 +72,14 @@ export class GithubService {
       html_url: string;
       description: string | null;
       private: boolean;
+      archived: boolean;
     };
     return {
       fullName: data.full_name,
       htmlUrl: data.html_url,
       description: data.description,
       isPrivate: data.private,
+      archived: data.archived,
     };
   }
 
