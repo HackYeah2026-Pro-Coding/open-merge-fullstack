@@ -4,28 +4,41 @@ import { api } from './index';
 
 export const queryKeys = {
   session: ['session'] as const,
-  project: ['project'] as const,
+  organization: ['organization'] as const,
   stats: ['stats'] as const,
-  activity: ['activity'] as const,
+  activity: (repo?: string) => ['activity', repo ?? null] as const,
+  repositories: ['repositories'] as const,
+  repository: (name: string) => ['repository', name] as const,
   bounties: (query: BountyListQuery) => ['bounties', query] as const,
-  bounty: (issueNumber: number) => ['bounty', issueNumber] as const,
+  bounty: (repo: string, issueNumber: number) => ['bounty', repo, issueNumber] as const,
   mySubmissions: ['me', 'submissions'] as const,
 };
+
+/** Everything a bounty's numbers feed into; refreshed after anything that changes them. */
+const SUMMARY_KEYS = [['bounties'], ['bounty'], ['stats'], ['activity'], ['repositories'], ['repository']];
 
 export function useSession() {
   return useQuery({ queryKey: queryKeys.session, queryFn: () => api.getSession(), staleTime: 60_000 });
 }
 
-export function useProject() {
-  return useQuery({ queryKey: queryKeys.project, queryFn: () => api.getProject(), staleTime: Infinity });
+export function useOrganization() {
+  return useQuery({ queryKey: queryKeys.organization, queryFn: () => api.getOrganization(), staleTime: Infinity });
 }
 
 export function useStats() {
   return useQuery({ queryKey: queryKeys.stats, queryFn: () => api.getStats() });
 }
 
-export function useActivity() {
-  return useQuery({ queryKey: queryKeys.activity, queryFn: () => api.listActivity() });
+export function useActivity(repo?: string) {
+  return useQuery({ queryKey: queryKeys.activity(repo), queryFn: () => api.listActivity(repo) });
+}
+
+export function useRepositories() {
+  return useQuery({ queryKey: queryKeys.repositories, queryFn: () => api.listRepositories() });
+}
+
+export function useRepository(name: string) {
+  return useQuery({ queryKey: queryKeys.repository(name), queryFn: () => api.getRepository(name) });
 }
 
 export function useBounties(query: BountyListQuery) {
@@ -40,10 +53,10 @@ function hasPendingCheck(bounty: Bounty | undefined): boolean {
   return !!bounty?.submissions.some((s) => s.state === 'open' && s.check.state === 'pending');
 }
 
-export function useBounty(issueNumber: number, options: { enabled?: boolean } = {}) {
+export function useBounty(repo: string, issueNumber: number, options: { enabled?: boolean } = {}) {
   return useQuery({
-    queryKey: queryKeys.bounty(issueNumber),
-    queryFn: () => api.getBounty(issueNumber),
+    queryKey: queryKeys.bounty(repo, issueNumber),
+    queryFn: () => api.getBounty(repo, issueNumber),
     enabled: options.enabled,
     // Check results arrive asynchronously; poll only while one is outstanding.
     refetchInterval: (query) => (hasPendingCheck(query.state.data) ? 3_000 : false),
@@ -59,10 +72,8 @@ export function useCreateBounty() {
   return useMutation({
     mutationFn: (input: CreateBountyInput) => api.createBounty(input),
     onSuccess: (bounty) => {
-      client.setQueryData(queryKeys.bounty(bounty.issue.number), bounty);
-      void client.invalidateQueries({ queryKey: ['bounties'] });
-      void client.invalidateQueries({ queryKey: queryKeys.stats });
-      void client.invalidateQueries({ queryKey: queryKeys.activity });
+      client.setQueryData(queryKeys.bounty(bounty.repository.name, bounty.issue.number), bounty);
+      for (const queryKey of SUMMARY_KEYS) void client.invalidateQueries({ queryKey });
     },
   });
 }
@@ -107,10 +118,7 @@ export function useApplyUser() {
   const client = useQueryClient();
   return (user: User) => {
     client.setQueryData(queryKeys.session, { user });
-    void client.invalidateQueries({ queryKey: ['me'] });
-    void client.invalidateQueries({ queryKey: ['bounties'] });
-    void client.invalidateQueries({ queryKey: ['bounty'] });
-    void client.invalidateQueries({ queryKey: queryKeys.stats });
-    void client.invalidateQueries({ queryKey: queryKeys.activity });
+    // Linking a wallet can release held payouts, which moves every total.
+    for (const queryKey of [['me'], ...SUMMARY_KEYS]) void client.invalidateQueries({ queryKey });
   };
 }

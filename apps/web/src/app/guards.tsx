@@ -1,6 +1,6 @@
 import { Link, Navigate, Outlet, useLocation } from 'react-router';
 import { ShieldAlert } from 'lucide-react';
-import { useProject, useSession } from '@/api/queries';
+import { useOrganization, useSession } from '@/api/queries';
 import { useOwnerViewAction } from './session-actions';
 import { Container } from '@/components/layout/container';
 import { EmptyState, ErrorState } from '@/components/common/states';
@@ -39,16 +39,16 @@ export function RequireAuth() {
 
 export function RequireMaintainer() {
   const session = useSession();
-  const project = useProject();
+  const organization = useOrganization();
   const owner = useOwnerViewAction();
   if (session.data?.user?.role === 'maintainer') return <Outlet />;
 
-  const repo = project.data ? `${project.data.owner}/${project.data.repo}` : 'this repository';
+  const org = organization.data?.login ?? 'this organization';
   return (
     <Container className="pt-14">
       <EmptyState
         icon={ShieldAlert}
-        title={`This page belongs to the project owner of ${repo}. Open the owner view to manage bounties.`}
+        title={`This page belongs to the owner of ${org}. Open the owner view to manage bounties.`}
         action={
           <div className="flex flex-wrap gap-2">
             <Button size="sm" variant="primary" onClick={() => owner.open()} pending={owner.pending}>

@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router';
 import { ArrowRight } from 'lucide-react';
-import { useProject, useStats } from '@/api/queries';
+import { useOrganization, useStats } from '@/api/queries';
 import { Container } from '@/components/layout/container';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -152,14 +152,15 @@ function Figure({ label, children }: { label: string; children: ReactNode }) {
 
 export function LiveNumbers() {
   const stats = useStats();
-  const project = useProject();
-  const repo = project.data ? `${project.data.owner}/${project.data.repo}` : 'the repository';
+  const organization = useOrganization();
+  const org = organization.data?.login ?? 'the organization';
 
   return (
     <section className="py-20 sm:py-28">
       <Container>
-        <SectionHeading eyebrow="Live" title="Numbers from the repository">
-          Every bounty on <span className="data text-fg">{repo}</span>, read from the same API the app uses.
+        <SectionHeading eyebrow="Live" title="Numbers from the organization">
+          Every bounty across the <span className="data text-fg">{org}</span> repositories, read from the same API the app
+          uses.
         </SectionHeading>
         {stats.isPending ? (
           <div className="mt-12 grid gap-8 sm:grid-cols-2 lg:grid-cols-4" aria-busy>

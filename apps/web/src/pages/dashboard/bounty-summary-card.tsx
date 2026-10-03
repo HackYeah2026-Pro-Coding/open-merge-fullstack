@@ -3,7 +3,8 @@ import { CircleDot } from 'lucide-react';
 import { Amount } from '@/components/common/amount';
 import { Labels } from '@/components/bounty/bounty-row';
 
-type Props = { title: string; reward: TokenAmount | null; labels: string[]; repo: string };
+/** `repo` is the chosen repository's name, null until one is chosen. */
+type Props = { title: string; reward: TokenAmount | null; labels: string[]; repo: string | null };
 
 /** Live summary of the bounty being written: how it will be listed and what creating it does. */
 export function BountySummaryCard({ title, reward, labels, repo }: Props) {
@@ -35,9 +36,13 @@ export function BountySummaryCard({ title, reward, labels, repo }: Props) {
       <dl className="space-y-3 border-t p-5 text-[13px] sm:p-6">
         <div className="flex justify-between gap-4">
           <dt className="text-fg-subtle">Repository</dt>
-          <dd className="data truncate text-fg-muted" title={repo}>
-            {repo}
-          </dd>
+          {repo ? (
+            <dd className="data truncate text-fg-muted" title={repo}>
+              {repo}
+            </dd>
+          ) : (
+            <dd className="text-fg-subtle">Not chosen yet</dd>
+          )}
         </div>
         <div className="flex justify-between gap-4">
           <dt className="text-fg-subtle">GitHub issue</dt>

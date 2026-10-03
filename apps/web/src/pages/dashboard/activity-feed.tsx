@@ -3,6 +3,7 @@ import type { ActivityItem, BountyEventType } from '@escrow/shared';
 import { Activity, CircleCheck, CircleDot, Clock, GitMerge, GitPullRequest, Undo2, type LucideIcon } from 'lucide-react';
 import { useActivity } from '@/api/queries';
 import { cn } from '@/lib/cn';
+import { paths } from '@/lib/paths';
 import { Amount } from '@/components/common/amount';
 import { RelativeTime } from '@/components/common/relative-time';
 import { EmptyState, ErrorState } from '@/components/common/states';
@@ -18,12 +19,15 @@ const EVENT: Record<BountyEventType, { icon: LucideIcon; tone: Tone }> = {
   refunded: { icon: Undo2, tone: 'neutral' },
 };
 
-function Describe({ item }: { item: ActivityItem }) {
+function Describe({ item, showRepo }: { item: ActivityItem; showRepo: boolean }) {
   const { event, bounty } = item;
   const who = event.actor ? <span className="text-fg">@{event.actor.login}</span> : null;
   const issue = (
-    <Link to={`/bounties/${bounty.issue.number}`} className="data text-fg hover:underline hover:underline-offset-4">
-      #{bounty.issue.number}
+    <Link
+      to={paths.bounty(bounty.repository.name, bounty.issue.number)}
+      className="data text-fg hover:underline hover:underline-offset-4"
+    >
+      {showRepo && bounty.repository.name}#{bounty.issue.number}
     </Link>
   );
   const pr = <span className="data text-fg">#{event.prNumber}</span>;
@@ -44,8 +48,9 @@ function Describe({ item }: { item: ActivityItem }) {
   }
 }
 
-export function ActivityFeed() {
-  const activity = useActivity();
+/** Latest events across the organization, or in one repository when `repo` is set. */
+export function ActivityFeed({ repo }: { repo?: string }) {
+  const activity = useActivity(repo);
 
   if (activity.isPending) {
     return (
@@ -76,7 +81,7 @@ export function ActivityFeed() {
             <Icon className={cn('mt-[3px] size-4', toneText[tone])} aria-hidden />
             <div className="min-w-0 text-[13px] leading-relaxed text-fg-muted">
               <p>
-                <Describe item={item} />
+                <Describe item={item} showRepo={!repo} />
               </p>
               <RelativeTime iso={item.event.at} className="text-[12px] text-fg-subtle" />
             </div>

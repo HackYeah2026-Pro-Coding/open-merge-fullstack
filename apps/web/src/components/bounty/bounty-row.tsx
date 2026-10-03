@@ -2,6 +2,7 @@ import { Link } from 'react-router';
 import type { BountySummary } from '@escrow/shared';
 import { GitPullRequest } from 'lucide-react';
 import { formatExact, formatRelative } from '@/lib/format';
+import { paths } from '@/lib/paths';
 import { Amount } from '@/components/common/amount';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BOUNTY_STATUS, StatusIcon, toneText } from './status';
@@ -18,20 +19,22 @@ export function Labels({ labels }: { labels: string[] }) {
   );
 }
 
-/** One bounty in a list. The whole row is the link. */
-export function BountyRow({ bounty }: { bounty: BountySummary }) {
+/** One bounty in a list. The whole row is the link. Hide the repository when the list is already scoped to one. */
+export function BountyRow({ bounty, showRepo = true }: { bounty: BountySummary; showRepo?: boolean }) {
   const status = BOUNTY_STATUS[bounty.status];
   return (
     <li>
       <Link
-        to={`/bounties/${bounty.issue.number}`}
+        to={paths.bounty(bounty.repository.name, bounty.issue.number)}
         className="group grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-3 px-4 py-3.5 outline-offset-[-2px] transition-colors duration-120 hover:bg-surface-1 sm:px-5"
       >
         <StatusIcon status={bounty.status} className="mt-[3px]" />
         <div className="min-w-0">
           <p className="truncate font-medium text-fg group-hover:text-fg">{bounty.title}</p>
           <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-[13px] text-fg-subtle">
-            <span className="data text-fg-muted">#{bounty.issue.number}</span>
+            <span className="data text-fg-muted">
+              {showRepo && bounty.repository.name}#{bounty.issue.number}
+            </span>
             <span aria-hidden>·</span>
             <span className={toneText[status.tone]}>{status.label}</span>
             <span aria-hidden>·</span>

@@ -1,6 +1,6 @@
-import type { Bounty, BountyStatus, BountySummary, Submission } from '@escrow/shared';
+import type { Bounty, BountyStats, BountyStatus, BountySummary, RepositoryRef, RepositorySummary, Submission } from '@escrow/shared';
 import { env } from '@/lib/env';
-import { MOCK_TOKEN, type MockBounty, type MockSubmission } from './types';
+import { MOCK_TOKEN, type MockBounty, type MockRepository, type MockSubmission } from './types';
 
 /** Settles pending checks whose time has come. Returns true when something changed. */
 export function settleChecks(bounty: MockBounty, now: Date = new Date()): boolean {
@@ -28,16 +28,49 @@ export function rewardOf(b: MockBounty) {
   return { amount: b.rewardAmount, ...MOCK_TOKEN };
 }
 
+export function repositoryRef(name: string): RepositoryRef {
+  return { name, fullName: `${env.githubOrg}/${name}`, url: `https://github.com/${env.githubOrg}/${name}` };
+}
+
+function sum(bounties: MockBounty[]) {
+  return { amount: bounties.reduce((acc, b) => acc + BigInt(b.rewardAmount), 0n).toString(), ...MOCK_TOKEN };
+}
+
+export function statsOf(bounties: MockBounty[]): BountyStats {
+  const by = (...statuses: BountyStatus[]) => bounties.filter((b) => statuses.includes(statusOf(b)));
+  return {
+    locked: sum(by('open', 'in_review', 'payout_held')),
+    paid: sum(by('paid')),
+    openCount: by('open', 'in_review').length,
+    paidCount: by('paid').length,
+    heldCount: by('payout_held').length,
+  };
+}
+
+export function toRepositorySummary(repo: MockRepository, bounties: MockBounty[]): RepositorySummary {
+  const own = bounties.filter((b) => b.repo === repo.name);
+  const latest = own.flatMap((b) => b.events.map((e) => e.at)).sort().at(-1) ?? null;
+  return {
+    ...repositoryRef(repo.name),
+    description: repo.description,
+    isPrivate: repo.isPrivate,
+    stats: statsOf(own),
+    lastActivityAt: latest,
+  };
+}
+
 export function toSubmission(s: MockSubmission): Submission {
   const { checkResolvesAt: _resolvesAt, checkOutcome: _outcome, ...submission } = s;
   return submission;
 }
 
 export function toSummary(b: MockBounty): BountySummary {
+  const repository = repositoryRef(b.repo);
   return {
     id: b.id,
     title: b.title,
-    issue: { number: b.issueNumber, url: `https://github.com/${env.githubRepo}/issues/${b.issueNumber}` },
+    repository,
+    issue: { number: b.issueNumber, url: `${repository.url}/issues/${b.issueNumber}` },
     status: statusOf(b),
     reward: rewardOf(b),
     labels: b.labels,

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Link, useLocation } from 'react-router';
-import type { Bounty, Project, User } from '@escrow/shared';
+import type { Bounty, User } from '@escrow/shared';
 import { ArrowUpRight, Check, Circle } from 'lucide-react';
 import { addressUrl, txUrl } from '@/lib/explorer';
 import { formatAmount, shortKey } from '@/lib/format';
@@ -10,7 +10,7 @@ import { CopyButton } from '@/components/common/copy-button';
 import { KeyValue } from '@/components/common/key-value';
 import { GithubIcon } from '@/components/common/icons';
 
-type Props = { bounty: Bounty; project: Project; user: User | null };
+type Props = { bounty: Bounty; user: User | null };
 
 function ChecklistItem({ done, children }: { done: boolean; children: ReactNode }) {
   return (
@@ -28,7 +28,7 @@ function ChecklistItem({ done, children }: { done: boolean; children: ReactNode 
   );
 }
 
-function DeveloperSteps({ bounty, project, user }: { bounty: Bounty; project: Project; user: User }) {
+function DeveloperSteps({ bounty, user }: { bounty: Bounty; user: User }) {
   const reference = `Closes #${bounty.issue.number}`;
   return (
     <div className="space-y-4">
@@ -61,7 +61,7 @@ function DeveloperSteps({ bounty, project, user }: { bounty: Bounty; project: Pr
       </div>
 
       <Button asChild variant="primary" className="w-full">
-        <a href={`${project.url}/compare`} target="_blank" rel="noreferrer">
+        <a href={`${bounty.repository.url}/compare`} target="_blank" rel="noreferrer">
           <GithubIcon className="size-4" />
           Open a pull request
           <ArrowUpRight className="text-bg/60" />
@@ -75,7 +75,7 @@ function DeveloperSteps({ bounty, project, user }: { bounty: Bounty; project: Pr
 }
 
 /** The panel footer: what this viewer can do next with this bounty. */
-export function SubmitCard({ bounty, project, user }: Props) {
+export function SubmitCard({ bounty, user }: Props) {
   const location = useLocation();
   const issueLink = (
     <Button asChild className="w-full">
@@ -158,5 +158,5 @@ export function SubmitCard({ bounty, project, user }: Props) {
     );
   }
 
-  return <DeveloperSteps bounty={bounty} project={project} user={user} />;
+  return <DeveloperSteps bounty={bounty} user={user} />;
 }

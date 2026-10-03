@@ -1,8 +1,10 @@
-import { Link, useParams } from 'react-router';
-import { ArrowUpRight, ChevronRight, GitPullRequest } from 'lucide-react';
+import { useParams } from 'react-router';
+import { ArrowUpRight, GitPullRequest } from 'lucide-react';
 import { ApiError } from '@/api';
-import { useBounty, useProject, useSession } from '@/api/queries';
+import { useBounty, useSession } from '@/api/queries';
+import { paths } from '@/lib/paths';
 import { pluralize } from '@/lib/format';
+import { Breadcrumb } from '@/components/layout/breadcrumb';
 import { Container } from '@/components/layout/container';
 import { Avatar } from '@/components/ui/avatar';
 import { Amount } from '@/components/common/amount';
@@ -16,20 +18,6 @@ import { PullRequestRow } from '@/components/bounty/pull-request-row';
 import { StatusBadge } from '@/components/bounty/status';
 import { SubmitCard } from '@/components/bounty/submit-card';
 import { NotFoundPage } from '@/pages/not-found-page';
-
-function Breadcrumb({ number }: { number: number | string }) {
-  return (
-    <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 pt-8 text-[13px] text-fg-subtle sm:pt-10">
-      <Link to="/bounties" className="hover:text-fg">
-        Bounties
-      </Link>
-      <ChevronRight className="size-3.5" aria-hidden />
-      <span className="data text-fg-muted" aria-current="page">
-        #{number}
-      </span>
-    </nav>
-  );
-}
 
 function BountySkeleton() {
   return (
@@ -51,26 +39,31 @@ function BountySkeleton() {
 
 export function BountyPage() {
   const params = useParams();
+  const repo = params.repo ?? '';
   const number = Number(params.number);
-  const valid = Number.isInteger(number) && number > 0;
-  const bounty = useBounty(number, { enabled: valid });
-  const project = useProject();
+  const valid = repo !== '' && Number.isInteger(number) && number > 0;
+  const bounty = useBounty(repo, number, { enabled: valid });
   const session = useSession();
 
   if (!valid || (bounty.error instanceof ApiError && bounty.error.status === 404)) return <NotFoundPage />;
 
   return (
     <Container>
-      <Breadcrumb number={params.number ?? ''} />
-      {bounty.isPending || project.isPending ? (
+      <Breadcrumb
+        items={[
+          { label: 'Bounties', to: '/bounties' },
+          { label: repo, to: paths.repoBounties(repo), mono: true },
+          { label: `#${params.number ?? ''}`, mono: true },
+        ]}
+      />
+      {bounty.isPending ? (
         <BountySkeleton />
-      ) : bounty.error || project.error ? (
+      ) : bounty.error ? (
         <div className="pt-6">
           <ErrorState
-            error={(bounty.error ?? project.error) as Error}
+            error={bounty.error}
             onRetry={() => {
               void bounty.refetch();
-              void project.refetch();
             }}
           />
         </div>
@@ -144,7 +137,7 @@ export function BountyPage() {
 
           <aside className="lg:sticky lg:top-20 lg:self-start">
             <EscrowPanel bounty={bounty.data}>
-              <SubmitCard bounty={bounty.data} project={project.data} user={session.data?.user ?? null} />
+              <SubmitCard bounty={bounty.data} user={session.data?.user ?? null} />
             </EscrowPanel>
           </aside>
         </div>

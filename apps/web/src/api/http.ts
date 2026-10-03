@@ -23,6 +23,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 
 function toSearch(query: BountyListQuery): string {
   const params = new URLSearchParams();
+  if (query.repo) params.set('repo', query.repo);
   if (query.status) params.set('status', query.status);
   if (query.q) params.set('q', query.q);
   if (query.sort) params.set('sort', query.sort);
@@ -38,12 +39,14 @@ export const httpApi: ApiClient = {
   openOwnerView: () => request('/auth/owner', { method: 'POST' }),
   signOut: () => request('/auth/sign-out', { method: 'POST' }),
 
-  getProject: () => request('/project'),
-  getStats: () => request('/project/stats'),
-  listActivity: () => request('/project/activity'),
+  getOrganization: () => request('/org'),
+  getStats: () => request('/org/stats'),
+  listActivity: (repo) => request(`/org/activity${repo ? `?repo=${encodeURIComponent(repo)}` : ''}`),
+  listRepositories: () => request('/org/repos'),
+  getRepository: (name) => request(`/org/repos/${encodeURIComponent(name)}`),
 
   listBounties: (query) => request(`/bounties${toSearch(query)}`),
-  getBounty: (issueNumber) => request(`/bounties/${issueNumber}`),
+  getBounty: (repo, issueNumber) => request(`/bounties/${encodeURIComponent(repo)}/${issueNumber}`),
   createBounty: (input) => request('/bounties', { method: 'POST', body: JSON.stringify(input) }),
 
   listMySubmissions: () => request('/me/submissions'),

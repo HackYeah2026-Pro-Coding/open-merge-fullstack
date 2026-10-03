@@ -1,4 +1,5 @@
 import type { TokenAmount } from './money';
+import type { RepositoryRef } from './project';
 import type { GithubActor } from './user';
 
 /**
@@ -13,6 +14,8 @@ export type BountyStatus = 'open' | 'in_review' | 'payout_held' | 'paid' | 'clos
 export type BountySort = 'newest' | 'reward';
 
 export interface BountyListQuery {
+  /** Repository name within the organization. Omit for every repository. */
+  repo?: string;
   status?: BountyStatus;
   /** Free-text match on title and issue number. */
   q?: string;
@@ -86,6 +89,8 @@ export interface BountyIssue {
 export interface BountySummary {
   id: string;
   title: string;
+  repository: RepositoryRef;
+  /** Issue numbers are unique within a repository only. */
   issue: BountyIssue;
   status: BountyStatus;
   reward: TokenAmount;
@@ -105,6 +110,8 @@ export interface Bounty extends BountySummary {
 }
 
 export interface CreateBountyInput {
+  /** Repository name within the organization. */
+  repo: string;
   title: string;
   body: string;
   /** Integer base units of the reward token. */
@@ -113,7 +120,7 @@ export interface CreateBountyInput {
 }
 
 export interface ActivityItem {
-  bounty: Pick<BountySummary, 'id' | 'title' | 'issue' | 'reward'>;
+  bounty: Pick<BountySummary, 'id' | 'title' | 'repository' | 'issue' | 'reward'>;
   event: BountyEvent;
 }
 

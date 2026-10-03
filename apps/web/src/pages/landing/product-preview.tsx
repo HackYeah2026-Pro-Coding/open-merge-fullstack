@@ -72,7 +72,8 @@ export function ProductPreview() {
     <div inert aria-hidden className="overflow-hidden rounded-lg border bg-surface-1 select-none">
       <div className="flex items-center justify-between gap-3 border-b px-5 py-3">
         <div className="flex items-center gap-1.5 text-[13px] text-fg-subtle">
-          Bounties <ChevronRight className="size-3.5" /> <span className="data text-fg-muted">#12</span>
+          Bounties <ChevronRight className="size-3.5" /> <span className="data">taskq</span>
+          <ChevronRight className="size-3.5" /> <span className="data text-fg-muted">#12</span>
         </div>
         <StatusBadge status="in_review" />
       </div>

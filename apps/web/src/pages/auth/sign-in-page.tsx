@@ -1,7 +1,7 @@
 import { Navigate, useSearchParams } from 'react-router';
 import { ArrowRight, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useProject, useSession, useSignIn } from '@/api/queries';
+import { useOrganization, useSession, useSignIn } from '@/api/queries';
 import { useOwnerViewAction } from '@/app/session-actions';
 import { cn } from '@/lib/cn';
 import { env } from '@/lib/env';
@@ -21,11 +21,11 @@ function safeNext(raw: string | null): string {
 const isOwnerPath = (path: string) => path.startsWith('/dashboard');
 
 function OwnerOption({ disabled }: { disabled: boolean }) {
-  const project = useProject();
+  const organization = useOrganization();
   const owner = useOwnerViewAction();
 
-  if (!project.data) return <Skeleton className="mt-4 h-[62px] w-full rounded-md" />;
-  const { maintainer } = project.data;
+  if (!organization.data) return <Skeleton className="mt-4 h-[62px] w-full rounded-md" />;
+  const { owner: maintainer } = organization.data;
   return (
     <button
       type="button"
@@ -53,7 +53,7 @@ export function SignInPage() {
   // Set by the API when GitHub sign-in comes back without a session.
   const error = signInErrorMessage(params.get('error'));
   const session = useSession();
-  const project = useProject();
+  const organization = useOrganization();
   const signIn = useSignIn();
 
   // Owner pages need the owner view; everything else is the developer's.
@@ -72,7 +72,7 @@ export function SignInPage() {
       onError: (error) => toast.error('Sign-in failed', { description: error.message }),
     });
 
-  const repo = project.data ? `${project.data.owner}/${project.data.repo}` : 'this repository';
+  const org = organization.data?.login ?? 'this organization';
 
   return (
     <Container className="flex min-h-[calc(100dvh-56px-200px)] items-center py-16">
@@ -105,9 +105,9 @@ export function SignInPage() {
         <p className="mt-4 text-[13px] text-fg-subtle">Developers link a Solana wallet after signing in.</p>
 
         <div className="mt-10 border-t pt-8">
-          <p className="label">Project owner</p>
+          <p className="label">Organization owner</p>
           <p className="mt-2 text-ui text-fg-muted">
-            Bounties on <span className="data text-fg">{repo}</span> are posted and merged by its owner.
+            Bounties in every <span className="data text-fg">{org}</span> repository are posted and merged by its owner.
           </p>
           <OwnerOption disabled={signIn.isPending} />
         </div>

@@ -35,9 +35,10 @@ function writeOpen(open: boolean): void {
 export function MockPanel() {
   const [open, setOpen] = useState(readOpen);
   const client = useQueryClient();
-  const match = useMatch('/bounties/:number');
+  const match = useMatch('/bounties/:repo/:number');
+  const repo = match?.params.repo ?? '';
   const issueNumber = Number(match?.params.number);
-  const bounty = useBounty(issueNumber, { enabled: Number.isInteger(issueNumber) });
+  const bounty = useBounty(repo, issueNumber, { enabled: repo !== '' && Number.isInteger(issueNumber) });
 
   const toggle = (next: boolean) => {
     setOpen(next);
@@ -93,7 +94,10 @@ export function MockPanel() {
       {bounty.data && (
         <>
           <p className="mt-4 mb-2 font-medium text-fg-muted">
-            Bounty <span className="data">#{bounty.data.issue.number}</span>
+            Bounty{' '}
+            <span className="data">
+              {bounty.data.repository.name}#{bounty.data.issue.number}
+            </span>
           </p>
           <div className="flex flex-col gap-1.5">
             {live && developer && (
@@ -101,7 +105,7 @@ export function MockPanel() {
                 size="sm"
                 className="justify-start"
                 onClick={() =>
-                  run(`Pull request opened by @${developer.githubLogin}`, () => simulateOpenPullRequest(issueNumber, developer))
+                  run(`Pull request opened by @${developer.githubLogin}`, () => simulateOpenPullRequest(repo, issueNumber, developer))
                 }
               >
                 <GitPullRequestCreate />
@@ -113,7 +117,7 @@ export function MockPanel() {
                 key={pr.id}
                 size="sm"
                 className="justify-start"
-                onClick={() => run(`Merged #${pr.prNumber}`, () => simulateMerge(issueNumber, pr.prNumber))}
+                onClick={() => run(`Merged #${pr.prNumber}`, () => simulateMerge(repo, issueNumber, pr.prNumber))}
               >
                 <GitMerge />
                 Merge #{pr.prNumber} by @{pr.author.login}

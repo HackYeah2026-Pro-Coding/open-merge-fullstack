@@ -1,7 +1,7 @@
 import { Link } from 'react-router';
 import type { User } from '@escrow/shared';
 import { ArrowUpRight, LayoutDashboard, LogOut, UserRound } from 'lucide-react';
-import { useProject } from '@/api/queries';
+import { useOrganization } from '@/api/queries';
 import { useOwnerViewAction, useSignOutAction } from '@/app/session-actions';
 import { Avatar } from '@/components/ui/avatar';
 import {
@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 export function UserMenu({ user }: { user: User }) {
-  const project = useProject();
+  const organization = useOrganization();
   const signOut = useSignOutAction();
   const owner = useOwnerViewAction();
   const isOwner = user.role === 'maintainer';
@@ -33,7 +33,7 @@ export function UserMenu({ user }: { user: User }) {
           <p className="mt-0.5 flex items-center gap-1.5 text-[13px] text-fg-subtle">
             <span className="data">@{user.githubLogin}</span>
             <span aria-hidden>·</span>
-            <span>{isOwner ? 'Project owner' : 'Developer'}</span>
+            <span>{isOwner ? 'Owner' : 'Developer'}</span>
           </p>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
@@ -57,11 +57,11 @@ export function UserMenu({ user }: { user: User }) {
             Open owner view
           </DropdownMenuItem>
         )}
-        {project.data && (
+        {organization.data && (
           <DropdownMenuItem asChild>
-            <a href={project.data.url} target="_blank" rel="noreferrer">
+            <a href={organization.data.url} target="_blank" rel="noreferrer">
               <ArrowUpRight />
-              Repository on GitHub
+              Organization on GitHub
             </a>
           </DropdownMenuItem>
         )}

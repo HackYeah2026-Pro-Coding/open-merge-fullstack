@@ -6,6 +6,7 @@ import { useMySubmissions } from '@/api/queries';
 import { cn } from '@/lib/cn';
 import { sumAmounts } from '@/lib/format';
 import { txUrl } from '@/lib/explorer';
+import { paths } from '@/lib/paths';
 import { Amount } from '@/components/common/amount';
 import { KeyValue } from '@/components/common/key-value';
 import { RelativeTime } from '@/components/common/relative-time';
@@ -39,11 +40,16 @@ function Row({ item }: { item: MySubmission }) {
     <li className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 px-4 py-4 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:px-5">
       <Icon className={cn('mt-[3px] size-4', toneText[state.tone])} aria-label={`${state.label} pull request`} role="img" />
       <div className="min-w-0">
-        <Link to={`/bounties/${item.bounty.issue.number}`} className="font-medium text-fg hover:underline hover:underline-offset-4">
+        <Link
+          to={paths.bounty(item.bounty.repository.name, item.bounty.issue.number)}
+          className="font-medium text-fg hover:underline hover:underline-offset-4"
+        >
           {item.bounty.title}
         </Link>
         <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-fg-subtle">
-          <span className="data text-fg-muted">#{item.submission.prNumber}</span>
+          <span className="data text-fg-muted">
+            {item.bounty.repository.name}#{item.submission.prNumber}
+          </span>
           <span aria-hidden>·</span>
           <span>
             updated <RelativeTime iso={item.submission.updatedAt} />

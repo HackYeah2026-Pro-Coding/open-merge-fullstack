@@ -2,7 +2,7 @@ import type { CommitCheck, GithubActor, PullRequestState, ReviewVerdict, User } 
 import { env } from '@/lib/env';
 import { event, fake } from './factory';
 import { BODIES } from './seed-bodies';
-import type { MockBounty, MockDb, MockSubmission } from './types';
+import type { MockBounty, MockDb, MockRepository, MockSubmission } from './types';
 
 const HOUR = 3_600_000;
 const USDC = 1_000_000n;
@@ -43,6 +43,25 @@ function users(at: (h: number) => string): User[] {
 
 const actor = (login: string): GithubActor => ({ login, avatarUrl: null });
 
+const REPOSITORIES: MockRepository[] = [
+  { name: 'taskq', description: 'Background job queue for Node.js with retries and scheduling.', isPrivate: false },
+  { name: 'taskq-cli', description: 'Command-line interface for inspecting and running taskq queues.', isPrivate: false },
+  { name: 'fetchkit', description: 'HTTP client with retries, rate limiting and streaming.', isPrivate: false },
+  { name: 'toolchain', description: 'Shared build, lint and release configuration.', isPrivate: false },
+  { name: 'docs', description: 'Documentation site for every package in the organization.', isPrivate: false },
+  { name: 'infra', description: 'Deployment and CI configuration.', isPrivate: true },
+];
+
+/** One past the highest issue or pull request number used in each repository. */
+function nextNumbers(bounties: MockBounty[]): Record<string, number> {
+  const next: Record<string, number> = Object.fromEntries(REPOSITORIES.map((r) => [r.name, 1]));
+  for (const b of bounties) {
+    const used = [b.issueNumber, ...b.submissions.map((s) => s.prNumber)];
+    next[b.repo] = Math.max(next[b.repo] ?? 1, ...used.map((n) => n + 1));
+  }
+  return next;
+}
+
 function check(claude: ReviewVerdict, claudeSays: string | null, gemini: ReviewVerdict, geminiSays: string | null): CommitCheck {
   const verdicts = [claude, gemini];
   const state = verdicts.includes('pending')
@@ -61,10 +80,11 @@ function check(claude: ReviewVerdict, claudeSays: string | null, gemini: ReviewV
 
 export function seedDatabase(now: Date): MockDb {
   const at = (hoursAgo: number) => new Date(now.getTime() - hoursAgo * HOUR).toISOString();
-  const repoUrl = `https://github.com/${env.githubRepo}`;
+  const repoUrl = (repo: string) => `https://github.com/${env.githubOrg}/${repo}`;
   const maintainer = actor('mkrawczyk');
 
   const pr = (
+    repo: string,
     number: number,
     title: string,
     author: string,
@@ -76,7 +96,7 @@ export function seedDatabase(now: Date): MockDb {
     id: fake.id(),
     prNumber: number,
     title,
-    url: `${repoUrl}/pull/${number}`,
+    url: `${repoUrl(repo)}/pull/${number}`,
     author: actor(author),
     state,
     headSha: fake.sha(),
@@ -88,6 +108,7 @@ export function seedDatabase(now: Date): MockDb {
   });
 
   const bounty = (
+    repo: string,
     issueNumber: number,
     title: string,
     body: string,
@@ -97,6 +118,7 @@ export function seedDatabase(now: Date): MockDb {
     rest: Partial<MockBounty> = {},
   ): MockBounty => ({
     id: fake.id(),
+    repo,
     issueNumber,
     title,
     body,
@@ -115,8 +137,8 @@ export function seedDatabase(now: Date): MockDb {
   const withEvents = (b: MockBounty, updatedH: number): MockBounty => ({ ...b, updatedAt: at(updatedH) });
 
   // Paid: merged with a passing check, developer had a wallet.
-  const dual = bounty(7, 'Ship dual ESM and CommonJS builds', BODIES.dualBuild, 900, ['feature', 'build'], 24 * 21);
-  const dualPr = pr(34, 'build: emit ESM and CJS with conditional exports', 'devon-ray', 'merged', 24 * 18, 24 * 12,
+  const dual = bounty('toolchain', 7, 'Ship dual ESM and CommonJS builds', BODIES.dualBuild, 900, ['feature', 'build'], 24 * 21);
+  const dualPr = pr('toolchain', 34, 'build: emit ESM and CJS with conditional exports', 'devon-ray', 'merged', 24 * 18, 24 * 12,
     check('approve', 'Exports map is correct and both entry points are tested.', 'approve', 'Matches the acceptance criteria.'));
   const dualPaidTx = fake.txSignature();
   dual.submissions = [dualPr];
@@ -127,8 +149,8 @@ export function seedDatabase(now: Date): MockDb {
     event('paid', at(24 * 12 - 0.02), { actor: dualPr.author, prNumber: 34, txSignature: dualPaidTx }),
   );
 
-  const leak = bounty(9, 'Memory leak in WebSocket reconnect loop', BODIES.memoryLeak, 1200, ['bug'], 24 * 19);
-  const leakPr = pr(36, 'fix(ws): remove message listener on disconnect', 'ines-park', 'merged', 24 * 15, 24 * 6,
+  const leak = bounty('taskq', 9, 'Memory leak in WebSocket reconnect loop', BODIES.memoryLeak, 1200, ['bug'], 24 * 19);
+  const leakPr = pr('taskq', 36, 'fix(ws): remove message listener on disconnect', 'ines-park', 'merged', 24 * 15, 24 * 6,
     check('approve', 'Leak fixed; the 1,000-reconnect test covers it.', 'approve', 'Clean change with a focused test.'));
   const leakPaidTx = fake.txSignature();
   leak.submissions = [leakPr];
@@ -140,8 +162,8 @@ export function seedDatabase(now: Date): MockDb {
   );
 
   // Held: merged, but the developer persona has not linked a wallet yet.
-  const glob = bounty(11, 'Glob matching fails on Windows paths with backslashes', BODIES.windowsGlob, 500, ['bug', 'windows'], 24 * 14);
-  const globPr = pr(39, 'fix(glob): normalise path separators before matching', 'tomek-w', 'merged', 24 * 10, 26,
+  const glob = bounty('toolchain', 11, 'Glob matching fails on Windows paths with backslashes', BODIES.windowsGlob, 500, ['bug', 'windows'], 24 * 14);
+  const globPr = pr('toolchain', 39, 'fix(glob): normalise path separators before matching', 'tomek-w', 'merged', 24 * 10, 26,
     check('approve', 'Separators normalised; Windows runner added to CI.', 'approve', 'Looks good.'));
   glob.submissions = [globPr];
   glob.payout = { recipient: actor('tomek-w'), state: 'held', wallet: null, txSignature: null, reason: 'No wallet linked for @tomek-w' };
@@ -152,10 +174,10 @@ export function seedDatabase(now: Date): MockDb {
   );
 
   // In review: two competing pull requests, reviewers disagree on one.
-  const retry = bounty(12, 'Retry queue drops jobs that time out mid-flight', BODIES.retryQueue, 750, ['bug', 'queue'], 24 * 9);
-  const retryA = pr(41, 'fix(queue): count timeouts as failed attempts', 'sam-oduya', 'open', 24 * 5, 30,
+  const retry = bounty('taskq', 12, 'Retry queue drops jobs that time out mid-flight', BODIES.retryQueue, 750, ['bug', 'queue'], 24 * 9);
+  const retryA = pr('taskq', 41, 'fix(queue): count timeouts as failed attempts', 'sam-oduya', 'open', 24 * 5, 30,
     check('changes', 'Jobs can run twice if a worker restarts during backoff.', 'approve', 'Timeout path is handled and tested.'));
-  const retryB = pr(43, 'fix(queue): retry timed-out jobs with idempotent re-enqueue', 'devon-ray', 'open', 20, 3,
+  const retryB = pr('taskq', 43, 'fix(queue): retry timed-out jobs with idempotent re-enqueue', 'devon-ray', 'open', 20, 3,
     check('approve', 'Covers the restart case with a lease; regression test included.', 'approve', 'Meets all acceptance criteria.'));
   retry.submissions = [retryA, retryB];
   retry.events.push(
@@ -163,8 +185,8 @@ export function seedDatabase(now: Date): MockDb {
     event('pr_opened', retryB.openedAt, { actor: retryB.author, prNumber: 43 }),
   );
 
-  const durations = bounty(20, 'Parse ISO 8601 durations in schedule config', BODIES.isoDurations, 400, ['feature', 'config'], 24 * 3);
-  const durationsPr = pr(46, 'feat(config): accept ISO 8601 durations', 'ines-park', 'open', 2, 0.05,
+  const durations = bounty('taskq', 20, 'Parse ISO 8601 durations in schedule config', BODIES.isoDurations, 400, ['feature', 'config'], 24 * 3);
+  const durationsPr = pr('taskq', 46, 'feat(config): accept ISO 8601 durations', 'ines-park', 'open', 2, 0.05,
     check('pending', null, 'pending', null));
   durationsPr.checkResolvesAt = new Date(now.getTime() + 45_000).toISOString();
   durationsPr.checkOutcome = check('approve', 'Parser is strict and well tested.', 'approve', 'No new dependencies; numbers still work.');
@@ -172,8 +194,8 @@ export function seedDatabase(now: Date): MockDb {
   durations.events.push(event('pr_opened', durationsPr.openedAt, { actor: durationsPr.author, prNumber: 46 }));
 
   // Closed without a merge: reward returned.
-  const intl = bounty(5, 'Replace moment.js with native Intl date formatting', BODIES.intl, 600, ['performance'], 24 * 26);
-  const intlPr = pr(31, 'refactor: drop moment.js', 'lukas-b', 'closed', 24 * 20, 24 * 9, check('changes', 'Breaks locale fallbacks.', 'changes', 'Several tests removed.'));
+  const intl = bounty('taskq-cli', 5, 'Replace moment.js with native Intl date formatting', BODIES.intl, 600, ['performance'], 24 * 26);
+  const intlPr = pr('taskq-cli', 31, 'refactor: drop moment.js', 'lukas-b', 'closed', 24 * 20, 24 * 9, check('changes', 'Breaks locale fallbacks.', 'changes', 'Several tests removed.'));
   intl.submissions = [intlPr];
   intl.closedAt = at(24 * 9);
   intl.events.push(
@@ -187,20 +209,20 @@ export function seedDatabase(now: Date): MockDb {
     withEvents(leak, 24 * 6),
     withEvents(glob, 26),
     withEvents(retry, 3),
-    bounty(15, 'Add a --json flag to every CLI command', BODIES.jsonFlag, 300, ['feature', 'cli', 'good first issue'], 24 * 6),
-    bounty(18, 'Document the plugin API with runnable examples', BODIES.pluginDocs, 150, ['docs'], 24 * 4),
+    bounty('taskq-cli', 15, 'Add a --json flag to every CLI command', BODIES.jsonFlag, 300, ['feature', 'cli', 'good first issue'], 24 * 6),
+    bounty('docs', 18, 'Document the plugin API with runnable examples', BODIES.pluginDocs, 150, ['docs'], 24 * 4),
     withEvents(durations, 0.05),
-    bounty(22, 'Rate limiter ignores the Retry-After header', BODIES.retryAfter, 350, ['bug', 'good first issue'], 20),
-    bounty(23, 'Stream large responses instead of buffering them', BODIES.streaming, 1000, ['performance'], 5),
+    bounty('fetchkit', 22, 'Rate limiter ignores the Retry-After header', BODIES.retryAfter, 350, ['bug', 'good first issue'], 20),
+    bounty('fetchkit', 23, 'Stream large responses instead of buffering them', BODIES.streaming, 1000, ['performance'], 5),
   ];
 
   return {
-    version: 2,
+    version: 3,
     users: users(at),
+    repositories: REPOSITORIES,
     bounties,
     sessionUserId: null,
     ownerView: false,
-    nextIssueNumber: 24,
-    nextPrNumber: 47,
+    nextNumber: nextNumbers(bounties),
   };
 }

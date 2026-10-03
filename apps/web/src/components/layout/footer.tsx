@@ -1,10 +1,10 @@
 import { Link } from 'react-router';
-import { useProject } from '@/api/queries';
+import { useOrganization } from '@/api/queries';
 import { Container } from './container';
 import { Logo } from './top-bar';
 
 export function Footer() {
-  const project = useProject();
+  const organization = useOrganization();
   return (
     <footer className="mt-24 border-t">
       <Container className="flex flex-col gap-6 py-10 sm:flex-row sm:items-center sm:justify-between">
@@ -19,9 +19,9 @@ export function Footer() {
           <Link to="/#how-it-works" className="hover:text-fg">
             How it works
           </Link>
-          {project.data && (
-            <a href={project.data.url} target="_blank" rel="noreferrer" className="data hover:text-fg">
-              {project.data.owner}/{project.data.repo}
+          {organization.data && (
+            <a href={organization.data.url} target="_blank" rel="noreferrer" className="data hover:text-fg">
+              {organization.data.login}
             </a>
           )}
         </nav>

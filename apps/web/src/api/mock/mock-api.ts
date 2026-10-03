@@ -1,12 +1,20 @@
-import type { ActivityItem, BountySummary, MySubmission, ProjectStats, User } from '@escrow/shared';
+import type { ActivityItem, BountySummary, MySubmission, OrganizationStats, User } from '@escrow/shared';
 import { env } from '@/lib/env';
 import { ApiError, type ApiClient } from '../client';
 import { delay, getDb, saveDb } from './db';
 import { MOCK_DEVELOPER_ID } from './seed';
 import { event, fake } from './factory';
 import { releaseHeldPayouts } from './simulate';
-import { MOCK_TOKEN, type MockBounty } from './types';
-import { rewardOf, settleChecks, statusOf, toBounty, toSubmission, toSummary } from './views';
+import type { MockBounty, MockRepository } from './types';
+import {
+  rewardOf,
+  settleChecks,
+  statsOf,
+  toBounty,
+  toRepositorySummary,
+  toSubmission,
+  toSummary,
+} from './views';
 
 const challenges = new Map<string, { userId: string; address: string; message: string; expiresAt: number }>();
 
@@ -22,10 +30,22 @@ function requireUser(): User {
   return user;
 }
 
-function findBounty(issueNumber: number): MockBounty {
-  const bounty = getDb().bounties.find((b) => b.issueNumber === issueNumber);
-  if (!bounty) throw new ApiError(404, `Bounty #${issueNumber} does not exist.`);
+function findRepository(name: string): MockRepository {
+  const repo = getDb().repositories.find((r) => r.name === name);
+  if (!repo) throw new ApiError(404, `Repository ${name} is not part of ${env.githubOrg}.`);
+  return repo;
+}
+
+function findBounty(repo: string, issueNumber: number): MockBounty {
+  const bounty = getDb().bounties.find((b) => b.repo === repo && b.issueNumber === issueNumber);
+  if (!bounty) throw new ApiError(404, `Bounty ${repo}#${issueNumber} does not exist.`);
   return bounty;
+}
+
+function owner(): User {
+  const user = getDb().users.find((u) => u.role === 'maintainer');
+  if (!user) throw new Error('Mock data has no owner');
+  return user;
 }
 
 /** Pending checks settle lazily, whenever data is read. */
@@ -33,10 +53,6 @@ function settleAll(): void {
   let changed = false;
   for (const b of getDb().bounties) changed = settleChecks(b) || changed;
   if (changed) saveDb();
-}
-
-function sum(bounties: MockBounty[]) {
-  return { amount: bounties.reduce((acc, b) => acc + BigInt(b.rewardAmount), 0n).toString(), ...MOCK_TOKEN };
 }
 
 const rawMockApi: ApiClient = {
@@ -65,52 +81,66 @@ const rawMockApi: ApiClient = {
     saveDb();
   },
 
-  async getProject() {
+  async getOrganization() {
     await delay();
-    const [owner = '', repo = ''] = env.githubRepo.split('/');
-    const maintainer = getDb().users.find((u) => u.role === 'maintainer');
-    if (!maintainer) throw new Error('Mock data has no maintainer');
+    const o = owner();
     return {
-      owner,
-      repo,
-      url: `https://github.com/${env.githubRepo}`,
-      maintainer: { login: maintainer.githubLogin, avatarUrl: maintainer.avatarUrl },
+      login: env.githubOrg,
+      name: null,
+      url: `https://github.com/${env.githubOrg}`,
+      avatarUrl: `https://github.com/${env.githubOrg}.png`,
+      owner: { login: o.githubLogin, avatarUrl: o.avatarUrl },
     };
   },
 
-  async getStats(): Promise<ProjectStats> {
+  async getStats(): Promise<OrganizationStats> {
     await delay();
-    const bounties = getDb().bounties;
-    const by = (...statuses: string[]) => bounties.filter((b) => statuses.includes(statusOf(b)));
-    const contributors = new Set(bounties.flatMap((b) => b.submissions.map((s) => s.author.login)));
+    const db = getDb();
+    const contributors = new Set(db.bounties.flatMap((b) => b.submissions.map((s) => s.author.login)));
     return {
-      locked: sum(by('open', 'in_review', 'payout_held')),
-      paid: sum(by('paid')),
-      openCount: by('open', 'in_review').length,
-      paidCount: by('paid').length,
-      heldCount: by('payout_held').length,
+      ...statsOf(db.bounties),
+      repositoryCount: db.repositories.length,
       contributorCount: contributors.size,
     };
   },
 
-  async listActivity(): Promise<ActivityItem[]> {
+  async listActivity(repo): Promise<ActivityItem[]> {
     await delay();
     return getDb()
-      .bounties.flatMap((b) =>
-        b.events.map((e) => ({
-          bounty: { id: b.id, title: b.title, issue: toSummary(b).issue, reward: rewardOf(b) },
-          event: e,
-        })),
-      )
+      .bounties.filter((b) => !repo || b.repo === repo)
+      .flatMap((b) => {
+        const { id, title, repository, issue } = toSummary(b);
+        return b.events.map((e) => ({ bounty: { id, title, repository, issue, reward: rewardOf(b) }, event: e }));
+      })
       .sort((x, y) => y.event.at.localeCompare(x.event.at))
       .slice(0, 12);
+  },
+
+  async listRepositories() {
+    await delay();
+    settleAll();
+    const db = getDb();
+    return db.repositories
+      .map((r) => toRepositorySummary(r, db.bounties))
+      .sort(
+        (a, b) =>
+          (b.lastActivityAt ?? '').localeCompare(a.lastActivityAt ?? '') || a.name.localeCompare(b.name),
+      );
+  },
+
+  async getRepository(name) {
+    await delay();
+    settleAll();
+    return toRepositorySummary(findRepository(name), getDb().bounties);
   },
 
   async listBounties(query) {
     await delay();
     settleAll();
     const q = query.q?.trim().toLowerCase().replace(/^#/, '');
-    let list: BountySummary[] = getDb().bounties.map(toSummary);
+    let list: BountySummary[] = getDb()
+      .bounties.filter((b) => !query.repo || b.repo === query.repo)
+      .map(toSummary);
     if (query.status) list = list.filter((b) => b.status === query.status);
     if (q) list = list.filter((b) => b.title.toLowerCase().includes(q) || String(b.issue.number) === q);
     return list.sort((a, b) =>
@@ -120,26 +150,30 @@ const rawMockApi: ApiClient = {
     );
   },
 
-  async getBounty(issueNumber) {
+  async getBounty(repo, issueNumber) {
     await delay();
     settleAll();
-    return toBounty(findBounty(issueNumber));
+    return toBounty(findBounty(repo, issueNumber));
   },
 
   async createBounty(input) {
     await delay();
     await delay();
     const user = requireUser();
-    if (user.role !== 'maintainer') throw new ApiError(403, 'Only the maintainer can create bounties.');
+    if (user.role !== 'maintainer') throw new ApiError(403, 'Only the owner can create bounties.');
+    const repo = findRepository(input.repo);
     if (input.title.trim().length < 8) throw new ApiError(400, 'The title must be at least 8 characters.');
     if (BigInt(input.rewardAmount) <= 0n) throw new ApiError(400, 'The reward must be greater than zero.');
 
     const db = getDb();
     const now = new Date().toISOString();
     const maintainer = { login: user.githubLogin, avatarUrl: user.avatarUrl };
+    const issueNumber = db.nextNumber[repo.name] ?? 1;
+    db.nextNumber[repo.name] = issueNumber + 1;
     const bounty: MockBounty = {
       id: fake.id(),
-      issueNumber: db.nextIssueNumber++,
+      repo: repo.name,
+      issueNumber,
       title: input.title.trim(),
       body: input.body.trim(),
       rewardAmount: input.rewardAmount,

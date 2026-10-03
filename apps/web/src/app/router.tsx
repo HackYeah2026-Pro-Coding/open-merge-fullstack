@@ -9,6 +9,7 @@ import { SignInPage } from '@/pages/auth/sign-in-page';
 import { AccountPage } from '@/pages/account/account-page';
 import { DashboardPage } from '@/pages/dashboard/dashboard-page';
 import { NewBountyPage } from '@/pages/dashboard/new-bounty-page';
+import { RepoDashboardPage } from '@/pages/dashboard/repo-dashboard-page';
 import { NotFoundPage } from '@/pages/not-found-page';
 
 export const router = createBrowserRouter([
@@ -18,7 +19,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <LandingPage /> },
       { path: 'bounties', element: <BountiesPage /> },
-      { path: 'bounties/:number', element: <BountyPage /> },
+      { path: 'bounties/:repo/:number', element: <BountyPage /> },
       { path: 'sign-in', element: <SignInPage /> },
       {
         element: <RequireAuth />,
@@ -28,6 +29,8 @@ export const router = createBrowserRouter([
             element: <RequireMaintainer />,
             children: [
               { path: 'dashboard', element: <DashboardPage /> },
+              { path: 'dashboard/repos/:repo', element: <RepoDashboardPage /> },
+              // ?repo=<name> pre-selects the repository; without it the form asks.
               { path: 'dashboard/new', element: <NewBountyPage /> },
             ],
           },

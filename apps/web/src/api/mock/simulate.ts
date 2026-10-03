@@ -11,9 +11,9 @@ import type { MockBounty, MockSubmission } from './types';
 
 const actorOf = (user: User) => ({ login: user.githubLogin, avatarUrl: user.avatarUrl });
 
-function findBounty(issueNumber: number): MockBounty {
-  const bounty = getDb().bounties.find((b) => b.issueNumber === issueNumber);
-  if (!bounty) throw new Error(`Mock bounty #${issueNumber} does not exist`);
+function findBounty(repo: string, issueNumber: number): MockBounty {
+  const bounty = getDb().bounties.find((b) => b.repo === repo && b.issueNumber === issueNumber);
+  if (!bounty) throw new Error(`Mock bounty ${repo}#${issueNumber} does not exist`);
   return bounty;
 }
 
@@ -38,16 +38,17 @@ export function releaseHeldPayouts(user: User): void {
 }
 
 /** A developer opens a pull request that references the issue. */
-export function simulateOpenPullRequest(issueNumber: number, author: User): MockSubmission {
+export function simulateOpenPullRequest(repo: string, issueNumber: number, author: User): MockSubmission {
   const db = getDb();
-  const bounty = findBounty(issueNumber);
+  const bounty = findBounty(repo, issueNumber);
   const now = new Date();
-  const number = db.nextPrNumber++;
+  const number = db.nextNumber[repo] ?? 1;
+  db.nextNumber[repo] = number + 1;
   const submission: MockSubmission = {
     id: fake.id(),
     prNumber: number,
     title: `fix: resolve #${issueNumber}`,
-    url: `https://github.com/${env.githubRepo}/pull/${number}`,
+    url: `https://github.com/${env.githubOrg}/${repo}/pull/${number}`,
     author: actorOf(author),
     state: 'open',
     headSha: fake.sha(),
@@ -80,9 +81,9 @@ export function simulateOpenPullRequest(issueNumber: number, author: User): Mock
  * The maintainer merges. For now the payout follows the merge directly; the
  * review gate described in AGENTS.md is not wired yet.
  */
-export function simulateMerge(issueNumber: number, prNumber: number): void {
+export function simulateMerge(repo: string, issueNumber: number, prNumber: number): void {
   const db = getDb();
-  const bounty = findBounty(issueNumber);
+  const bounty = findBounty(repo, issueNumber);
   const pr = bounty.submissions.find((s) => s.prNumber === prNumber);
   if (!pr || pr.state !== 'open') throw new Error(`PR #${prNumber} is not open`);
 

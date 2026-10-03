@@ -6,8 +6,9 @@ import type {
   CreateBountyInput,
   LinkWalletInput,
   MySubmission,
-  Project,
-  ProjectStats,
+  Organization,
+  OrganizationStats,
+  RepositorySummary,
   Session,
   User,
   WalletChallenge,
@@ -19,24 +20,28 @@ import type {
  * product is usable before the endpoints land.
  */
 export interface ApiClient {
-  /** The project owner while the owner view is open, otherwise the signed-in developer (or nobody). */
+  /** The owner while the owner view is open, otherwise the signed-in developer (or nobody). */
   getSession(): Promise<Session>;
   /** Starts GitHub sign-in for a developer. The HTTP client leaves the page; `next` is where to land afterwards. */
   signIn(next: string): Promise<void>;
   /**
-   * Opens the project owner view. There is a single owner per project, so this
+   * Opens the owner view. There is a single owner per organization, so this
    * takes no credentials; the developer session underneath is kept as it was.
    */
   openOwnerView(): Promise<void>;
   /** Leaves the owner view when it is open (back to the developer session), otherwise signs the developer out. */
   signOut(): Promise<void>;
 
-  getProject(): Promise<Project>;
-  getStats(): Promise<ProjectStats>;
-  listActivity(): Promise<ActivityItem[]>;
+  getOrganization(): Promise<Organization>;
+  getStats(): Promise<OrganizationStats>;
+  /** Latest events across the organization, or in one repository. */
+  listActivity(repo?: string): Promise<ActivityItem[]>;
+  /** Every repository of the organization, most recently active first. */
+  listRepositories(): Promise<RepositorySummary[]>;
+  getRepository(name: string): Promise<RepositorySummary>;
 
   listBounties(query: BountyListQuery): Promise<BountySummary[]>;
-  getBounty(issueNumber: number): Promise<Bounty>;
+  getBounty(repo: string, issueNumber: number): Promise<Bounty>;
   createBounty(input: CreateBountyInput): Promise<Bounty>;
 
   listMySubmissions(): Promise<MySubmission[]>;

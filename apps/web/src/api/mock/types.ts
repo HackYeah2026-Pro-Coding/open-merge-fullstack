@@ -8,8 +8,16 @@ export interface MockSubmission extends Submission {
   checkOutcome: { state: CheckState; reviewers: ReviewerVerdict[] } | null;
 }
 
+export interface MockRepository {
+  name: string;
+  description: string | null;
+  isPrivate: boolean;
+}
+
 export interface MockBounty {
   id: string;
+  /** Repository name within the organization. */
+  repo: string;
   issueNumber: number;
   title: string;
   body: string;
@@ -25,12 +33,13 @@ export interface MockBounty {
 }
 
 export interface MockDb {
-  version: 2;
+  version: 3;
   users: User[];
+  repositories: MockRepository[];
   bounties: MockBounty[];
   /** The developer signed in with GitHub, if any. Kept while the owner view is open. */
   sessionUserId: string | null;
   ownerView: boolean;
-  nextIssueNumber: number;
-  nextPrNumber: number;
+  /** Next issue or pull request number per repository; GitHub numbers both from one sequence. */
+  nextNumber: Record<string, number>;
 }
