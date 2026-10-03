@@ -2,7 +2,7 @@ import { useEffect, useId, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import type { BountyStatus } from '@escrow/shared';
 import { Inbox, Search, SearchX } from 'lucide-react';
-import { useBounties, useRepositories } from '@/api/queries';
+import { useBounties } from '@/api/queries';
 import { readFilters, writeFilters } from '@/lib/bounty-filters';
 import { cn } from '@/lib/cn';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectItemText, SelectTrigger, Selec
 import { Button } from '@/components/ui/button';
 import { EmptyState, ErrorState } from '@/components/common/states';
 import { BountyRow, BountyRowSkeleton } from './bounty-row';
-import { RepoSelect } from './repo-select';
+import { RepoFilter } from './repo-filter';
 import { BOUNTY_STATUS, BOUNTY_STATUS_ORDER } from './status';
 
 type BountyBrowserProps = {
@@ -37,7 +37,6 @@ export function BountyBrowser({ repo: scope, emptyAction, emptyTitle }: BountyBr
   }, [debouncedSearch, params, setParams]);
 
   const repo = scope ?? filters.repo;
-  const repos = useRepositories();
   const all = useBounties({ repo });
   const list = useBounties({ repo, status: filters.status, q: filters.q, sort: filters.sort });
   const counts = new Map<BountyStatus, number>();
@@ -81,16 +80,6 @@ export function BountyBrowser({ repo: scope, emptyAction, emptyTitle }: BountyBr
             className="pl-9"
           />
         </div>
-        {!scope && (
-          <RepoSelect
-            repos={repos.data ?? []}
-            value={filters.repo}
-            onChange={(next) => setParams((prev) => writeFilters(prev, { repo: next }))}
-            allowAll
-            aria-label="Filter by repository"
-            className="sm:w-52"
-          />
-        )}
         <div className="flex items-center gap-2 text-[13px] text-fg-subtle sm:ml-auto">
           <span id={`${sortId}-label`}>Sort</span>
           <Select
@@ -111,6 +100,13 @@ export function BountyBrowser({ repo: scope, emptyAction, emptyTitle }: BountyBr
           </Select>
         </div>
       </div>
+
+      {!scope && (
+        <RepoFilter
+          value={filters.repo}
+          onChange={(next) => setParams((prev) => writeFilters(prev, { repo: next }))}
+        />
+      )}
 
       <div className="overflow-hidden rounded-lg border">
         <nav aria-label="Filter by status" className="flex gap-1 overflow-x-auto border-b bg-surface-1 px-2 py-2 sm:px-3">

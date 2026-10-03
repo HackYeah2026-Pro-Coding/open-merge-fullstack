@@ -2,15 +2,10 @@ import type { RepositorySummary } from '@escrow/shared';
 import { cn } from '@/lib/cn';
 import { Select, SelectContent, SelectItem, SelectItemText, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-/** Radix Select cannot hold an empty value, so "every repository" has a sentinel. */
-export const ALL_REPOS = '__all__';
-
 type RepoSelectProps = {
   repos: RepositorySummary[];
   value: string | undefined;
-  onChange: (repo: string | undefined) => void;
-  /** Adds an "All repositories" choice, for filters. */
-  allowAll?: boolean;
+  onChange: (repo: string) => void;
   /** Shows each repository's description under its name, for the bounty form. */
   detailed?: boolean;
   id?: string;
@@ -26,7 +21,6 @@ export function RepoSelect({
   repos,
   value,
   onChange,
-  allowAll,
   detailed,
   id,
   invalid,
@@ -36,10 +30,7 @@ export function RepoSelect({
   className,
 }: RepoSelectProps) {
   return (
-    <Select
-      value={value ?? (allowAll ? ALL_REPOS : '')}
-      onValueChange={(next) => onChange(next === ALL_REPOS ? undefined : next)}
-    >
+    <Select value={value ?? ''} onValueChange={onChange}>
       <SelectTrigger
         id={id}
         aria-label={ariaLabel}
@@ -50,11 +41,6 @@ export function RepoSelect({
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent>
-        {allowAll && (
-          <SelectItem value={ALL_REPOS}>
-            <SelectItemText>All repositories</SelectItemText>
-          </SelectItem>
-        )}
         {repos.map((repo) => (
           <SelectItem key={repo.name} value={repo.name} className={detailed ? 'py-2' : undefined}>
             <span className="min-w-0">
