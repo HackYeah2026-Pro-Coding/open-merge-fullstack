@@ -29,6 +29,8 @@ const createIssueSchema = z.object({
     .transform((value) => BigInt(value))
     .refine((value) => value <= U64_MAX, `Must be at most ${U64_MAX} base units`),
   repoId: z.string().min(1),
+  // Applied to the GitHub issue and shown on the bounty.
+  labels: z.array(z.string().trim().min(1).max(50)).max(10).optional(),
 });
 type CreateIssueBody = z.output<typeof createIssueSchema>;
 
@@ -64,6 +66,7 @@ export class IssueController {
           example: '5000000',
         },
         repoId: { type: 'string', description: 'Id of a stored repository.' },
+        labels: { type: 'array', items: { type: 'string' }, example: ['bug'] },
       },
     },
   })

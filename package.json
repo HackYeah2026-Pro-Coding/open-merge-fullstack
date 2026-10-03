@@ -25,6 +25,15 @@
     "db:reset": "pnpm --filter @escrow/api run db:reset",
     "db:seed": "pnpm --filter @escrow/api run db:seed",
     "prisma:generate": "pnpm --filter @escrow/api run prisma:generate",
+    "demo": "pnpm --filter @escrow/api run demo",
+    "demo:publish": "pnpm --filter @escrow/api run demo publish",
+    "demo:reset": "pnpm --filter @escrow/api run demo reset",
+    "demo:bounty": "pnpm --filter @escrow/api run demo bounty",
+    "demo:pr": "pnpm --filter @escrow/api run demo pr",
+    "demo:fix": "pnpm --filter @escrow/api run demo fix",
+    "demo:merge": "pnpm --filter @escrow/api run demo merge",
+    "demo:status": "pnpm --filter @escrow/api run demo status",
+    "demo:filler": "pnpm --filter @escrow/api run demo filler",
     "setup": "pnpm install && pnpm run db:up && pnpm run db:migrate && pnpm run db:seed"
   }
 }

@@ -1,0 +1,12 @@
+{
+  "name": "fair-split",
+  "version": "1.0.0",
+  "description": "Split a bill between friends. Amounts are integer cents.",
+  "type": "module",
+  "main": "src/splitBill.js",
+  "scripts": {
+    "test": "node --test",
+    "example": "node examples/serve.mjs"
+  },
+  "license": "MIT"
+}

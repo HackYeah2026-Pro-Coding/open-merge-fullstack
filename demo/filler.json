@@ -1,0 +1,158 @@
+{
+  "authors": [
+    { "login": "devon-ray", "name": "Devon Ray", "githubId": 2000000001, "wallet": true },
+    { "login": "ines-park", "name": "Inés Park", "githubId": 2000000002, "wallet": true },
+    { "login": "sam-oduya", "name": "Sam Oduya", "githubId": 2000000003, "wallet": true },
+    { "login": "lukas-b", "name": "Lukas Berg", "githubId": 2000000004, "wallet": false },
+    { "login": "tomek-w", "name": "Tomasz Wójcik", "githubId": 2000000005, "wallet": false }
+  ],
+  "repos": [
+    { "name": "pocket-ledger", "description": "Track who owes whom after a trip." },
+    { "name": "tiny-todo", "description": "A to-do list that lives in your terminal." },
+    { "name": "signup-kit", "description": "Drop-in sign-up form with validation." },
+    { "name": "weather-card", "description": "A small weather widget for any website." },
+    { "name": "recipe-scaler", "description": "Scale a recipe to any number of guests." }
+  ],
+  "bounties": [
+    {
+      "repo": "pocket-ledger",
+      "title": "Balance shows -0.00 when everyone is settled",
+      "problem": "After the last payment the balance reads \"-0.00\" instead of \"0.00\". It looks like somebody still owes something, and people keep asking who.",
+      "expected": "A balance of zero is shown as \"0.00\", never with a minus sign.",
+      "criteria": ["A zero balance is shown as `0.00`", "Tiny negative rounding errors (above -0.005) count as zero", "A test covers both cases"],
+      "reward": 40,
+      "labels": ["bug", "good first issue"],
+      "state": "paid",
+      "author": "devon-ray",
+      "ageDays": 18
+    },
+    {
+      "repo": "pocket-ledger",
+      "title": "Export the ledger as a CSV file",
+      "problem": "There is no way to get the ledger out of the app. Treasurers copy the numbers into a spreadsheet by hand after every trip.",
+      "expected": "An `export` command writes the ledger to a CSV file with one row per expense.",
+      "criteria": ["The file has the columns date, description, amount, paid by", "Amounts use a dot as the decimal separator", "Descriptions with commas or quotes are escaped correctly"],
+      "reward": 120,
+      "labels": ["feature"],
+      "state": "in_review",
+      "author": "ines-park",
+      "ageDays": 6
+    },
+    {
+      "repo": "pocket-ledger",
+      "title": "Expenses added offline disappear after syncing",
+      "problem": "Expenses entered without a connection are gone after the next sync. The phone shows them until the app reconnects, then they vanish.",
+      "expected": "Expenses added offline are still there after syncing, and the other devices see them.",
+      "criteria": ["Offline expenses survive a sync", "An expense is never uploaded twice", "A test simulates going offline and back"],
+      "reward": 90,
+      "labels": ["bug"],
+      "state": "open",
+      "ageDays": 3
+    },
+    {
+      "repo": "tiny-todo",
+      "title": "Completed tasks come back after a restart",
+      "problem": "Tick a task as done, close the terminal, open it again: the task is back on the list, unticked.",
+      "expected": "A completed task stays completed after a restart.",
+      "criteria": ["The done state is saved to the list file", "Existing list files without a done state still load", "A test covers saving and loading"],
+      "reward": 60,
+      "labels": ["bug"],
+      "state": "in_review_split",
+      "author": "sam-oduya",
+      "ageDays": 4
+    },
+    {
+      "repo": "tiny-todo",
+      "title": "Understand due dates like \"tomorrow\" and \"next friday\"",
+      "problem": "Due dates must be typed as 2026-10-12. Nobody does that. Everyone types \"tomorrow\".",
+      "expected": "`tiny-todo add \"call mum\" --due tomorrow` sets the due date to the next day.",
+      "criteria": ["`today`, `tomorrow` and weekday names are understood", "`next friday` means the Friday of next week", "Unknown words give a clear error instead of being ignored"],
+      "reward": 150,
+      "labels": ["feature"],
+      "state": "open",
+      "ageDays": 9
+    },
+    {
+      "repo": "tiny-todo",
+      "title": "Tasks with emoji break the list alignment",
+      "problem": "A task with an emoji pushes its due date out of its column, so the list looks broken.",
+      "expected": "Columns stay aligned whatever characters a task contains.",
+      "criteria": ["Emoji do not shift the columns", "Plain text lists look exactly as before"],
+      "reward": 30,
+      "labels": ["bug", "good first issue"],
+      "state": "closed",
+      "author": "lukas-b",
+      "ageDays": 21
+    },
+    {
+      "repo": "signup-kit",
+      "title": "Valid emails with a plus sign are rejected",
+      "problem": "`anna+shop@example.com` is a perfectly valid address, but the form says it is invalid. Plenty of people use plus addressing to sort their mail.",
+      "expected": "Addresses with a plus sign in the name part are accepted.",
+      "criteria": ["`anna+shop@example.com` is accepted", "Addresses without an @ or without a domain are still rejected", "A test covers both"],
+      "reward": 35,
+      "labels": ["bug", "good first issue"],
+      "state": "payout_held",
+      "author": "tomek-w",
+      "ageDays": 8
+    },
+    {
+      "repo": "signup-kit",
+      "title": "Password meter calls \"password123\" strong",
+      "problem": "The strength meter only counts character types, so \"password123\" scores green. It is one of the first passwords any attacker tries.",
+      "expected": "Common passwords are rated weak, whatever characters they contain.",
+      "criteria": ["A list of common passwords is checked, case-insensitively", "\"password123\" and \"Qwerty2024\" are weak", "A long random passphrase is still strong"],
+      "reward": 75,
+      "labels": ["bug", "security"],
+      "state": "in_review",
+      "author": "devon-ray",
+      "ageDays": 2
+    },
+    {
+      "repo": "signup-kit",
+      "title": "The show/hide password button cannot be used with a keyboard",
+      "problem": "Tabbing through the form skips the button that reveals the password, so keyboard and screen reader users cannot use it.",
+      "expected": "The button can be reached with Tab and toggled with Enter or Space.",
+      "criteria": ["The button is a real button element in the tab order", "It announces whether the password is shown or hidden", "The focus ring is visible"],
+      "reward": 45,
+      "labels": ["accessibility"],
+      "state": "open",
+      "ageDays": 1
+    },
+    {
+      "repo": "weather-card",
+      "title": "The forecast shows the wrong weekday in other time zones",
+      "problem": "Seen from Sydney, the card labels tomorrow's forecast with today's weekday. The dates are computed in UTC instead of the visitor's time zone.",
+      "expected": "Each forecast day is labelled with the weekday in the viewer's own time zone.",
+      "criteria": ["Weekdays follow the viewer's time zone", "Days around midnight UTC are labelled correctly", "A test runs with at least two time zones"],
+      "reward": 80,
+      "labels": ["bug"],
+      "state": "paid",
+      "author": "ines-park",
+      "ageDays": 25
+    },
+    {
+      "repo": "weather-card",
+      "title": "Temperature shows \"undefined°\" when the visitor is offline",
+      "problem": "Without a connection the card renders \"undefined°\" instead of saying that nothing could be loaded.",
+      "expected": "An offline card shows the last known temperature, or a short message when there is none.",
+      "criteria": ["\"undefined\" never appears on the card", "The last successful reading is shown with its age", "A test covers the offline case"],
+      "reward": 25,
+      "labels": ["bug", "good first issue"],
+      "state": "open",
+      "ageDays": 0.5
+    },
+    {
+      "repo": "recipe-scaler",
+      "title": "Round ingredient amounts to kitchen-friendly fractions",
+      "problem": "Scaling a recipe for 5 people gives \"0.6667 cup of flour\". Nobody owns a 0.6667 cup.",
+      "expected": "Amounts are rounded to fractions a measuring cup has: 1/4, 1/3, 1/2, 2/3, 3/4.",
+      "criteria": ["0.6667 cup is shown as 2/3 cup", "Whole numbers and amounts in grams are left alone", "A test covers the common fractions"],
+      "reward": 55,
+      "labels": ["feature", "good first issue"],
+      "state": "in_review_split",
+      "author": "sam-oduya",
+      "ageDays": 5
+    }
+  ]
+}

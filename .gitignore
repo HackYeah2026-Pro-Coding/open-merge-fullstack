@@ -13,6 +13,9 @@ coverage/
 # Prisma 7 generates the client into source — never commit it
 apps/api/src/generated/
 
+# Written by `pnpm demo:reset` when it drops a bounty whose escrow was never released
+demo/.orphaned-escrows.json
+
 .DS_Store
 *.log
 npm-debug.log*

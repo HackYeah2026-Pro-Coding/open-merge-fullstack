@@ -1,0 +1,28 @@
+{
+  "repo": {
+    "name": "fair-split",
+    "description": "Split a bill between friends. Amounts are integer cents.",
+    "private": false
+  },
+  "refs": {
+    "baseline": "demo-baseline",
+    "v1": "demo-fix-v1",
+    "v2": "demo-fix-v2"
+  },
+  "commits": {
+    "baseline": "feat: split a bill between friends",
+    "v1": "fix: round shares up so nobody is short",
+    "v2": "fix: hand the remaining cents to the first people"
+  },
+  "branch": "fix/split-remainder",
+  "bounty": {
+    "title": "Shares don't add up to the total when splitting a bill",
+    "labels": ["bug", "good first issue"],
+    "rewardTokens": 50,
+    "bodyFile": "issue.md"
+  },
+  "pullRequest": {
+    "title": "fix: make split shares add up to the total",
+    "bodyFile": "pull-request.md"
+  }
+}

@@ -6,7 +6,8 @@
     "dev": "nest start --watch",
     "build": "nest build",
     "start": "node dist/main",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p scripts/tsconfig.json --noEmit",
+    "demo": "tsx scripts/demo/index.ts",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest --passWithNoTests",
     "prisma:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
@@ -53,16 +54,40 @@
     "typescript": "5.9.3"
   },
   "jest": {
-    "moduleFileExtensions": [
-      "js",
-      "json",
-      "ts"
-    ],
-    "rootDir": "src",
-    "testRegex": ".*\\.spec\\.ts$",
-    "transform": {
-      "^.+\\.ts$": "ts-jest"
-    },
-    "testEnvironment": "node"
+    "projects": [
+      {
+        "displayName": "api",
+        "moduleFileExtensions": [
+          "js",
+          "json",
+          "ts"
+        ],
+        "rootDir": "src",
+        "testRegex": ".*\\.spec\\.ts$",
+        "transform": {
+          "^.+\\.ts$": "ts-jest"
+        },
+        "testEnvironment": "node"
+      },
+      {
+        "displayName": "demo",
+        "moduleFileExtensions": [
+          "js",
+          "json",
+          "ts"
+        ],
+        "rootDir": "scripts",
+        "testRegex": ".*\\.spec\\.ts$",
+        "transform": {
+          "^.+\\.ts$": [
+            "ts-jest",
+            {
+              "tsconfig": "<rootDir>/tsconfig.json"
+            }
+          ]
+        },
+        "testEnvironment": "node"
+      }
+    ]
   }
 }
