@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { useRerunReview } from '@/api/queries';
 import { cn } from '@/lib/cn';
 import { Button } from '@/components/ui/button';
+import { ReviewSources } from './review-sources';
 
 const CRITERION: Record<CriterionStatus, { label: string; icon: typeof Check; className: string }> = {
   met: { label: 'Met', icon: Check, className: 'text-ok-text' },
@@ -64,6 +65,7 @@ function ReviewerColumn({ reviewer }: { reviewer: ReviewerVerdict }) {
           </ul>
         </div>
       )}
+      {reviewer.sources.length > 0 && <ReviewSources sources={reviewer.sources} />}
     </div>
   );
 }

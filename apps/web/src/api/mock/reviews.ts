@@ -1,4 +1,4 @@
-import type { CiResult, CommitCheck, ReviewCriterion, ReviewerVerdict, ReviewVerdict } from '@escrow/shared';
+import type { CiResult, CommitCheck, ReviewCriterion, ReviewerVerdict, ReviewSource, ReviewVerdict } from '@escrow/shared';
 
 type ReviewerName = 'Claude' | 'Gemini';
 
@@ -7,6 +7,12 @@ const MODEL: Record<ReviewerName, string> = { Claude: 'claude-opus-5-5', Gemini:
 const MET: ReviewCriterion[] = [
   { criterion: 'The behaviour described in the issue is implemented', status: 'met', evidence: 'src/index.ts:42' },
   { criterion: 'A test covers the new behaviour', status: 'met', evidence: 'CI job "test"' },
+];
+
+const SOURCES: ReviewSource[] = [
+  { tool: 'read_file', target: 'src/index.ts', ok: true },
+  { tool: 'search', target: 'handleRequest', ok: true },
+  { tool: 'read_file', target: 'test/index.test.ts', ok: true },
 ];
 
 /** What the mock reviewers say for a verdict. Real answers come from the API. */
@@ -25,6 +31,7 @@ export function reviewer(name: ReviewerName, verdict: ReviewVerdict, summary: st
           ? [MET[0], { criterion: 'Edge cases from the issue are handled', status: 'not_met', evidence: summary ?? 'see summary' }]
           : [],
     risks: verdict === 'changes' && summary ? [summary] : [],
+    sources: answered ? SOURCES : [],
   };
 }
 

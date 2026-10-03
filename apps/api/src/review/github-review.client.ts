@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { GithubService } from '../github/github.service';
+import { MAX_TARBALL_BYTES } from './tools/repo-snapshot';
 
 /** Marks the bot comment so later runs update it instead of adding another. */
 export const COMMENT_MARKER = '<!-- openmerge-review -->';
@@ -115,6 +116,11 @@ export class GithubReviewClient {
     } else {
       await this.github.request('POST', `${base(slug)}/issues/${number}/comments`, { body });
     }
+  }
+
+  /** The repository at one commit as a gzipped tarball, for the reviewers' read-only tools. */
+  tarball(slug: RepoSlug, ref: string): Promise<Buffer> {
+    return this.github.download(`${base(slug)}/tarball/${encodeURIComponent(ref)}`, MAX_TARBALL_BYTES);
   }
 
   /** The pull request as it is now: its text for the prompt, and its head to detect a newer push. */

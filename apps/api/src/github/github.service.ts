@@ -39,6 +39,14 @@ function githubMessage(text: string): string {
   return text.slice(0, 200);
 }
 
+/** A download that would exceed its size limit; nothing past the limit is read. */
+export class DownloadTooLargeError extends Error {
+  constructor(path: string, maxBytes: number) {
+    super(`GitHub's answer for ${path} is larger than ${Math.round(maxBytes / 1024 / 1024)} MB`);
+    this.name = 'DownloadTooLargeError';
+  }
+}
+
 /** Thin client for the GitHub REST API. */
 @Injectable()
 export class GithubService {
@@ -124,6 +132,39 @@ export class GithubService {
       throw new BadGatewayException(`GitHub returned ${res.status} for ${method} ${path}: ${githubMessage(text)}`);
     }
     return (res.status === 204 ? undefined : await res.json()) as T;
+  }
+
+  /**
+   * Authenticated GET of a binary answer, such as a tarball, following GitHub's
+   * redirect. Rejects as soon as the body passes `maxBytes` instead of buffering it.
+   */
+  async download(path: string, maxBytes: number): Promise<Buffer> {
+    this.assertHasToken();
+    const res = await fetch(`${GITHUB_API}${path}`, { headers: this.headers() });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new BadGatewayException(`GitHub returned ${res.status} for GET ${path}: ${githubMessage(text)}`);
+    }
+    const tooLarge = () => new DownloadTooLargeError(path, maxBytes);
+    if (Number(res.headers.get('content-length') ?? 0) > maxBytes) {
+      await res.body?.cancel();
+      throw tooLarge();
+    }
+    if (!res.body) return Buffer.alloc(0);
+
+    const chunks: Buffer[] = [];
+    let size = 0;
+    const reader = res.body.getReader();
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) return Buffer.concat(chunks, size);
+      size += value.byteLength;
+      if (size > maxBytes) {
+        await reader.cancel();
+        throw tooLarge();
+      }
+      chunks.push(Buffer.from(value));
+    }
   }
 
   /** Fetches every page of a REST list endpoint, 100 items at a time. */

@@ -3,7 +3,8 @@ import type { CiWaitOptions } from './ci-status';
 import type { GithubReviewClient } from './github-review.client';
 import { ReviewRunner } from './review.runner';
 import type { ReviewOutput, ReviewerAnswer } from './review-output';
-import type { Reviewer } from './reviewers/reviewer';
+import type { Reviewer, ReviewRequest } from './reviewers/reviewer';
+import { repoTarball } from './tools/tar-fixtures';
 
 const REVIEW = {
   id: 'rev_1',
@@ -26,14 +27,16 @@ const answer = (verdict: 'approve' | 'changes', model: string): ReviewerAnswer =
     developerFeedback: `feedback from ${model}`,
     maintainerSummary: 'summary',
   };
-  return { output, model, inputTokens: 100, outputTokens: 50 };
+  return { output, model, inputTokens: 100, outputTokens: 50, sources: [] };
 };
-const reviewer = (name: 'claude' | 'gemini', result: () => Promise<ReviewerAnswer>): Reviewer & { review: jest.Mock } => ({
+type Answer = (request: ReviewRequest) => Promise<ReviewerAnswer>;
+const reviewer = (name: 'claude' | 'gemini', result: Answer): Reviewer & { review: jest.Mock } => ({
   name,
   review: jest.fn(result),
 });
+const requestOf = (r: { review: jest.Mock }): ReviewRequest => r.review.mock.calls[0][0];
 
-function setup(options: { claude?: () => Promise<ReviewerAnswer>; gemini?: () => Promise<ReviewerAnswer> } = {}) {
+function setup(options: { claude?: Answer; gemini?: Answer } = {}) {
   const queries = {
     reviewerResult: { deleteMany: jest.fn().mockReturnValue('delete'), createMany: jest.fn().mockReturnValue('create') },
     review: { findUniqueOrThrow: jest.fn().mockResolvedValue(REVIEW), update: jest.fn().mockReturnValue('update') },
@@ -47,6 +50,7 @@ function setup(options: { claude?: () => Promise<ReviewerAnswer>; gemini?: () =>
     listFiles: jest.fn().mockResolvedValue([FILE]),
     fileContent: jest.fn().mockResolvedValue('export const login = 1;'),
     upsertComment: jest.fn().mockResolvedValue(undefined),
+    tarball: jest.fn().mockResolvedValue(repoTarball({ 'src/login.ts': 'export const login = 1;', 'src/login.test.ts': 'test(login)' })),
   };
   const claude = reviewer('claude', options.claude ?? (async () => answer('approve', 'claude-m')));
   const gemini = reviewer('gemini', options.gemini ?? (async () => answer('approve', 'gemini-m')));
@@ -72,8 +76,8 @@ describe('ReviewRunner', () => {
       ['sha1', 'pending'],
       ['sha1', 'success'],
     ]);
-    const prompt = claude.review.mock.calls[0][0] as string;
-    expect(gemini.review).toHaveBeenCalledWith(prompt);
+    const { prompt } = requestOf(claude);
+    expect(requestOf(gemini).prompt).toBe(prompt);
     expect(prompt).toContain('Issue #7: Fix login');
     expect(prompt).toContain('passed: every workflow run');
     expect(prompt).toContain('export const login = 1;');
@@ -87,12 +91,47 @@ describe('ReviewRunner', () => {
     expect(github.upsertComment).toHaveBeenCalledWith({ owner: 'acme', repo: 'widgets' }, 12, expect.stringContaining('Both reviewers approve'));
   });
 
+  it('gives each reviewer its own tool log over one repository download, made only when a tool is used', async () => {
+    const { runner, github, claude, gemini, queries } = setup({
+      claude: async ({ tools }) => {
+        await tools.run({ id: 'c1', name: 'read_file', input: { path: 'src/login.ts' } });
+        await tools.run({ id: 'c2', name: 'search', input: { query: 'login' } });
+        return { ...answer('approve', 'claude-m'), sources: tools.sources };
+      },
+      gemini: async ({ tools }) => {
+        await tools.run({ id: 'g1', name: 'read_file', input: { path: 'missing.ts' } });
+        return { ...answer('approve', 'gemini-m'), sources: tools.sources };
+      },
+    });
+    await runner.run('rev_1');
+    expect(github.tarball).toHaveBeenCalledTimes(1);
+    expect(github.tarball).toHaveBeenCalledWith({ owner: 'acme', repo: 'widgets' }, 'sha1');
+    expect(requestOf(claude).tools).not.toBe(requestOf(gemini).tools);
+    expect(savedResults(queries).map((r: { sources: unknown }) => r.sources)).toEqual([
+      [
+        { tool: 'read_file', target: 'src/login.ts', ok: true },
+        { tool: 'search', target: 'login', ok: true },
+      ],
+      [{ tool: 'read_file', target: 'missing.ts', ok: false }],
+    ]);
+    // Tool results are delimited with the same random id as the prompt's sections.
+    const nonce = requestOf(claude).prompt.match(/use the id ([0-9a-f]+)\./)?.[1];
+    const result = await requestOf(claude).tools.run({ id: 'c3', name: 'list_dir', input: { path: '' } });
+    expect(result.content.startsWith(`BEGIN tool_result ${nonce}\n`)).toBe(true);
+  });
+
+  it('downloads nothing when no reviewer uses a tool', async () => {
+    const { runner, github } = setup();
+    await runner.run('rev_1');
+    expect(github.tarball).not.toHaveBeenCalled();
+  });
+
   it('reports failure on the commit when a reviewer asks for changes', async () => {
     const { runner, github } = setup({ gemini: async () => answer('changes', 'gemini-m') });
     await runner.run('rev_1');
     expect(github.setStatus).toHaveBeenLastCalledWith(expect.anything(), 'sha1', {
       state: 'failure',
-      description: 'Changes requested by gemini',
+      description: 'Changes requested by Gemini',
     });
   });
 

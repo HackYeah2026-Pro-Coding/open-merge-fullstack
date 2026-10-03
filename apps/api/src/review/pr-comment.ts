@@ -1,5 +1,7 @@
+import type { ReviewSource } from '@escrow/shared';
 import type { CiState } from '../generated/prisma/enums';
 import { COMMENT_MARKER } from './github-review.client';
+import { REVIEWER_DISPLAY_NAME } from './review-output';
 import type { ReviewerOutcome } from './verdict';
 import { overallState, verdictOf } from './verdict';
 
@@ -9,7 +11,6 @@ export interface CommentInput {
   outcomes: ReviewerOutcome[];
 }
 
-const NAME: Record<string, string> = { claude: 'Claude', gemini: 'Gemini' };
 const CRITERION_ICON = { met: '✅', not_met: '❌', unknown: '❔' } as const;
 const HEADLINE = {
   passed: '**Both reviewers approve this change.**',
@@ -19,6 +20,30 @@ const HEADLINE = {
 
 /** Table cells cannot hold newlines or bare pipes. */
 const cell = (text: string) => text.replaceAll('|', '\\|').replace(/\s*\n\s*/g, ' ');
+
+const MAX_LISTED = 12;
+const code = (text: string) => `\`${text.replace(/[`\n]/g, ' ')}\``;
+
+function listed(items: string[]): string {
+  const shown = items.slice(0, MAX_LISTED).map(code).join(', ');
+  return items.length > MAX_LISTED ? `${shown} and ${items.length - MAX_LISTED} more` : shown;
+}
+
+/** One line saying what the reviewer read in the repository, so the verdict's basis is visible. */
+function sourcesLine(sources: ReviewSource[]): string | null {
+  if (sources.length === 0) return null;
+  const done = (tool: ReviewSource['tool']) => [...new Set(sources.filter((s) => s.ok && s.tool === tool).map((s) => s.target))];
+  const parts: string[] = [];
+  const read = done('read_file');
+  const searched = done('search');
+  const dirs = done('list_dir');
+  if (read.length > 0) parts.push(`read ${listed(read)}`);
+  if (searched.length > 0) parts.push(`searched for ${listed(searched)}`);
+  if (dirs.length > 0) parts.push(`listed ${listed(dirs)}`);
+  const failed = sources.filter((s) => !s.ok).length;
+  const failures = failed > 0 ? ` ${failed} tool ${failed === 1 ? 'call' : 'calls'} failed.` : '';
+  return `Tools: ${parts.length > 0 ? parts.join('; ') : 'no call succeeded'}.${failures}`;
+}
 
 function ciLine(ci: CommentInput['ci']): string {
   switch (ci.state) {
@@ -38,7 +63,7 @@ export function renderComment({ headSha, ci, outcomes }: CommentInput): string {
   const lines = [COMMENT_MARKER, `## OpenMerge review of \`${headSha.slice(0, 7)}\``, '', HEADLINE[overallState(outcomes.map(verdictOf), ci.state)], '', ciLine(ci)];
 
   for (const outcome of outcomes) {
-    lines.push('', `### ${NAME[outcome.reviewer] ?? outcome.reviewer}`);
+    lines.push('', `### ${REVIEWER_DISPLAY_NAME[outcome.reviewer] ?? outcome.reviewer}`);
     if (!outcome.ok) {
       lines.push(`No answer: ${outcome.error}`);
       continue;
@@ -54,6 +79,8 @@ export function renderComment({ headSha, ci, outcomes }: CommentInput): string {
       for (const c of output.criteria) lines.push(`| ${CRITERION_ICON[c.status]} | ${cell(c.criterion)} | ${cell(c.evidence)} |`);
     }
     if (output.risks.length > 0) lines.push('', 'Risks:', ...output.risks.map((r) => `- ${r}`));
+    const sources = sourcesLine(outcome.answer.sources);
+    if (sources) lines.push('', sources);
   }
 
   const used = outcomes.flatMap((o) => (o.ok ? [o.answer.model] : []));

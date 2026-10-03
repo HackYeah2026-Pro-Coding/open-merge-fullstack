@@ -203,6 +203,8 @@ model ReviewerResult {
   error        String?
   inputTokens  Int?
   outputTokens Int?
+  /// Tool calls the reviewer made, as ReviewSource[]; null when it failed or ran before tools existed.
+  sources      Json?
 
   createdAt DateTime @default(now()) @db.Timestamptz(3)
 

@@ -1,18 +1,21 @@
-import type { CheckState, CommitCheck, CriterionStatus, ReviewerVerdict } from '@escrow/shared';
+import type { CheckState, CommitCheck, CriterionStatus, ReviewSource, ReviewerVerdict } from '@escrow/shared';
+import { z } from 'zod';
 import type { Review, ReviewerResult } from '../generated/prisma/client';
-import { reviewOutputSchema } from './review-output';
+import { REVIEWER_DISPLAY_NAME, reviewOutputSchema, reviewSourceSchema } from './review-output';
 import { overallState } from './verdict';
-
-const DISPLAY_NAME: Record<string, string> = { claude: 'Claude', gemini: 'Gemini' };
 
 /** Both reviewers are always listed so the dual pill keeps its two halves while one is still working. */
 const REVIEWERS = ['claude', 'gemini'] as const;
 
 type Run = Review & { results: ReviewerResult[] };
 
+/** Rows from before the tools existed, and failed reviewers, have no sources. */
+const sourcesOf = (result: ReviewerResult): ReviewSource[] =>
+  result.sources === null ? [] : z.array(reviewSourceSchema).parse(result.sources);
+
 function toVerdict(reviewer: string, result: ReviewerResult | undefined, review: Run): ReviewerVerdict {
-  const reviewerName = DISPLAY_NAME[reviewer] ?? reviewer;
-  const empty = { model: null, confidence: null, criteria: [], risks: [] };
+  const reviewerName = REVIEWER_DISPLAY_NAME[reviewer] ?? reviewer;
+  const empty = { model: null, confidence: null, criteria: [], risks: [], sources: [] };
   if (!result) {
     // No result row: still running, or the whole run failed before this reviewer answered, which the run's error explains.
     return review.status === 'failed'
@@ -32,6 +35,7 @@ function toVerdict(reviewer: string, result: ReviewerResult | undefined, review:
     confidence: output.confidence,
     criteria: output.criteria.map((c) => ({ ...c, status: c.status as CriterionStatus })),
     risks: output.risks,
+    sources: sourcesOf(result),
   };
 }
 

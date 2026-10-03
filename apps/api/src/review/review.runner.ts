@@ -5,7 +5,10 @@ import { waitForCi, type CiResult, type CiWaitOptions } from './ci-status';
 import { GithubReviewClient, type RepoSlug } from './github-review.client';
 import { renderComment } from './pr-comment';
 import { buildReviewContext } from './review-context';
-import { REVIEWERS, type Reviewer } from './reviewers/reviewer';
+import { REVIEWER_DISPLAY_NAME } from './review-output';
+import { REVIEWERS, type Reviewer, type ReviewRequest } from './reviewers/reviewer';
+import { snapshotLoader } from './tools/repo-snapshot';
+import { ReviewToolExecutor } from './tools/tool-executor';
 import { overallState, toCommitStatus, verdictOf, type ReviewerOutcome } from './verdict';
 
 export const CI_WAIT_OPTIONS = Symbol('CI_WAIT_OPTIONS');
@@ -18,7 +21,7 @@ const errorMessage = (error: unknown): string => (error instanceof Error ? error
 function describeOutcome(state: 'passed' | 'failed' | 'error', outcomes: ReviewerOutcome[]): string {
   if (state === 'passed') return 'Both reviewers approve';
   if (state === 'error') return 'Review incomplete: a reviewer gave no answer';
-  const asking = outcomes.filter((o) => verdictOf(o) === 'changes').map((o) => o.reviewer);
+  const asking = outcomes.filter((o) => verdictOf(o) === 'changes').map((o) => REVIEWER_DISPLAY_NAME[o.reviewer]);
   return asking.length > 0 ? `Changes requested by ${asking.join(' and ')}` : 'Changes needed: CI failed';
 }
 
@@ -84,7 +87,13 @@ export class ReviewRunner {
       readFile: (path) => this.github.fileContent(slug, path, review.headSha),
     });
 
-    const outcomes = await Promise.all(this.reviewers.map((reviewer) => this.ask(reviewer, context.prompt)));
+    // Downloaded once, on the first tool call of either reviewer; each reviewer keeps its own call log and budget.
+    const snapshot = snapshotLoader(() => this.github.tarball(slug, review.headSha));
+    const outcomes = await Promise.all(
+      this.reviewers.map((reviewer) =>
+        this.ask(reviewer, { prompt: context.prompt, tools: new ReviewToolExecutor(snapshot, context.nonce) }),
+      ),
+    );
     await this.save(review.id, ci, context.notes, outcomes);
 
     const state = overallState(outcomes.map(verdictOf), ci.state);
@@ -105,9 +114,9 @@ export class ReviewRunner {
   }
 
   /** One reviewer's failure must not discard the other's answer, so it is recorded as its outcome. */
-  private async ask(reviewer: Reviewer, prompt: string): Promise<ReviewerOutcome> {
+  private async ask(reviewer: Reviewer, request: ReviewRequest): Promise<ReviewerOutcome> {
     try {
-      return { reviewer: reviewer.name, ok: true, answer: await reviewer.review(prompt) };
+      return { reviewer: reviewer.name, ok: true, answer: await reviewer.review(request) };
     } catch (error) {
       this.logger.warn(`${reviewer.name} gave no review: ${errorMessage(error)}`);
       return { reviewer: reviewer.name, ok: false, error: errorMessage(error) };
@@ -132,6 +141,7 @@ export class ReviewRunner {
           error: o.ok ? null : o.error,
           inputTokens: o.ok ? o.answer.inputTokens : null,
           outputTokens: o.ok ? o.answer.outputTokens : null,
+          sources: o.ok ? o.answer.sources.map((s) => ({ ...s })) : undefined,
         })),
       }),
       this.prisma.review.update({

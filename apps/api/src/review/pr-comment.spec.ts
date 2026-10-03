@@ -1,3 +1,4 @@
+import type { ReviewSource } from '@escrow/shared';
 import { COMMENT_MARKER } from './github-review.client';
 import { renderComment } from './pr-comment';
 import type { ReviewOutput } from './review-output';
@@ -12,10 +13,10 @@ const output = (over: Partial<ReviewOutput> = {}): ReviewOutput => ({
   maintainerSummary: 'Solves the issue.',
   ...over,
 });
-const ok = (reviewer: 'claude' | 'gemini', out: ReviewOutput, model = `${reviewer}-model`): ReviewerOutcome => ({
+const ok = (reviewer: 'claude' | 'gemini', out: ReviewOutput, model = `${reviewer}-model`, sources: ReviewSource[] = []): ReviewerOutcome => ({
   reviewer,
   ok: true,
-  answer: { output: out, model, inputTokens: 1, outputTokens: 1 },
+  answer: { output: out, model, inputTokens: 1, outputTokens: 1, sources },
 });
 
 describe('renderComment', () => {
@@ -63,6 +64,29 @@ describe('renderComment', () => {
     });
     expect(text).toContain('could not be completed');
     expect(text).toContain('No answer: quota exceeded');
+  });
+
+  it('says what each reviewer read in the repository, without repeats, and how many calls failed', () => {
+    const sources: ReviewSource[] = [
+      { tool: 'read_file', target: 'src/login.ts', ok: true },
+      { tool: 'search', target: 'trimEmail', ok: true },
+      { tool: 'read_file', target: 'src/login.ts', ok: true },
+      { tool: 'read_file', target: 'src/gone.ts', ok: false },
+      { tool: 'list_dir', target: 'test', ok: true },
+    ];
+    const text = renderComment({ ...base, outcomes: [ok('claude', output(), 'claude-model', sources), ok('gemini', output())] });
+    expect(text).toContain('Tools: read `src/login.ts`; searched for `trimEmail`; listed `test`. 1 tool call failed.');
+    expect(text.match(/^Tools:/gm)).toHaveLength(1);
+  });
+
+  it('keeps model-chosen search text from breaking out of its code span, and shortens long lists', () => {
+    const many: ReviewSource[] = Array.from({ length: 15 }, (_, i) => ({ tool: 'read_file', target: `f${i}.ts`, ok: true }));
+    const text = renderComment({
+      ...base,
+      outcomes: [ok('claude', output(), 'm', [{ tool: 'search', target: 'a`b\nc', ok: true }, ...many]), ok('gemini', output())],
+    });
+    expect(text).toContain('searched for `a b c`');
+    expect(text).toContain('`f11.ts` and 3 more');
   });
 
   it('keeps table cells on one line and escapes pipes', () => {

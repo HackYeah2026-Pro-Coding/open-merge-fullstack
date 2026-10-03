@@ -134,6 +134,7 @@ const result = (reviewer: string, verdict: 'approve' | 'changes' | null) => ({
   model: `${reviewer}-m`,
   verdict,
   error: verdict ? null : 'quota exceeded',
+  sources: null,
   output: verdict && {
     verdict,
     confidence: 'high',
@@ -209,6 +210,17 @@ describe('ReviewService.listSubmissions', () => {
       ['error', 'quota exceeded'],
     ]);
     expect(submission.retryableReviewId).toBe('rev_1');
+  });
+
+  it('shows what each reviewer read, and nothing for rows from before the tools existed', async () => {
+    const { service, prisma } = setup();
+    const sources = [
+      { tool: 'read_file', target: 'src/login.ts', ok: true },
+      { tool: 'search', target: 'trimEmail', ok: false },
+    ];
+    prisma.pullRequest.findMany.mockResolvedValue([pull([review({ results: [{ ...result('claude', 'approve'), sources }, result('gemini', 'approve')] })])]);
+    const [submission] = await service.listSubmissions('issue_1');
+    expect(submission.check.reviewers.map((r) => r.sources)).toEqual([sources, []]);
   });
 
   it('explains a run that failed before any reviewer answered with the run error', async () => {

@@ -37,6 +37,18 @@ export interface ReviewCriterion {
 
 export type ReviewConfidence = 'low' | 'medium' | 'high';
 
+/** Read-only tools a reviewer can use to look at the repository beyond the diff. */
+export type ReviewToolName = 'read_file' | 'search' | 'list_dir';
+
+/** One look a reviewer took at the repository, recorded by the server as it ran, not reported by the model. */
+export interface ReviewSource {
+  tool: ReviewToolName;
+  /** The file read, the directory listed, or the text searched for. */
+  target: string;
+  /** False when the call failed, e.g. the file does not exist at the reviewed commit. */
+  ok: boolean;
+}
+
 export interface ReviewerVerdict {
   reviewer: string;
   verdict: ReviewVerdict;
@@ -47,6 +59,8 @@ export interface ReviewerVerdict {
   confidence: ReviewConfidence | null;
   criteria: ReviewCriterion[];
   risks: string[];
+  /** What the reviewer looked at in the repository, in order; empty when it used no tools. */
+  sources: ReviewSource[];
 }
 
 export type CheckState = 'not_run' | 'pending' | 'passed' | 'failed' | 'error';

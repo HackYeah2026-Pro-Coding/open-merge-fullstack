@@ -216,7 +216,7 @@ export function seedDatabase(now: Date): MockDb {
   ];
 
   return {
-    version: 4,
+    version: 5,
     users: users(at),
     repositories: REPOSITORIES,
     bounties,

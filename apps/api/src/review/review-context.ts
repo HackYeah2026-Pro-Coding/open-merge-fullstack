@@ -23,6 +23,8 @@ export interface ReviewContext {
   prompt: string;
   /** Files or parts left out of the prompt, each with the reason. */
   notes: string[];
+  /** The random id delimiting sections; tool results are delimited with it too. */
+  nonce: string;
 }
 
 const section = (nonce: string, name: string, body: string) =>
@@ -86,5 +88,5 @@ export async function buildReviewContext(input: ReviewInput, nonce = randomBytes
     section(nonce, 'left_out', notes.join('\n') || '(nothing)'),
   ].join('\n\n');
 
-  return { prompt, notes };
+  return { prompt, notes, nonce };
 }

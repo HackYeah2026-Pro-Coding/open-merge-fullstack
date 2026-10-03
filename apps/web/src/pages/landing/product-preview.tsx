@@ -20,6 +20,7 @@ const half = (reviewer: string, verdict: 'approve' | 'changes') => ({
   confidence: null,
   criteria: [],
   risks: [],
+  sources: [],
 });
 
 const PRS: Submission[] = [
