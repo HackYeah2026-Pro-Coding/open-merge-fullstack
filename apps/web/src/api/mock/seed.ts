@@ -1,6 +1,7 @@
 import type { CommitCheck, GithubActor, PullRequestState, ReviewVerdict, User } from '@escrow/shared';
 import { env } from '@/lib/env';
 import { event, fake } from './factory';
+import { CI_PASSED, checkOf, reviewer } from './reviews';
 import { BODIES } from './seed-bodies';
 import type { MockBounty, MockDb, MockRepository, MockSubmission } from './types';
 
@@ -63,19 +64,7 @@ function nextNumbers(bounties: MockBounty[]): Record<string, number> {
 }
 
 function check(claude: ReviewVerdict, claudeSays: string | null, gemini: ReviewVerdict, geminiSays: string | null): CommitCheck {
-  const verdicts = [claude, gemini];
-  const state = verdicts.includes('pending')
-    ? 'pending'
-    : verdicts.every((v) => v === 'approve')
-      ? 'passed'
-      : 'failed';
-  return {
-    state,
-    reviewers: [
-      { reviewer: 'Claude', verdict: claude, summary: claudeSays },
-      { reviewer: 'Gemini', verdict: gemini, summary: geminiSays },
-    ],
-  };
+  return checkOf(reviewer('Claude', claude, claudeSays), reviewer('Gemini', gemini, geminiSays));
 }
 
 export function seedDatabase(now: Date): MockDb {
@@ -101,6 +90,9 @@ export function seedDatabase(now: Date): MockDb {
     state,
     headSha: fake.sha(),
     check: result,
+    ci: result.state === 'not_run' || result.state === 'pending' ? null : CI_PASSED,
+    retryableReviewId: result.state === 'error' ? fake.id() : null,
+    reviewedAt: result.state === 'not_run' || result.state === 'pending' ? null : at(updatedH),
     openedAt: at(openedH),
     updatedAt: at(updatedH),
     checkResolvesAt: null,
@@ -203,6 +195,13 @@ export function seedDatabase(now: Date): MockDb {
     event('refunded', at(24 * 9), { actor: maintainer, txSignature: fake.txSignature(), note: 'Issue closed as not planned' }),
   );
 
+  // A reviewer that gave no answer: the owner can run the review again.
+  const retryAfter = bounty('fetchkit', 22, 'Rate limiter ignores the Retry-After header', BODIES.retryAfter, 350, ['bug', 'good first issue'], 20);
+  const retryAfterPr = pr('fetchkit', 24, 'fix(limiter): honour Retry-After', 'tomek-w', 'open', 6, 1,
+    check('approve', 'Header is parsed in seconds and as an HTTP date.', 'error', 'Gemini API returned 429: quota exceeded'));
+  retryAfter.submissions = [retryAfterPr];
+  retryAfter.events.push(event('pr_opened', retryAfterPr.openedAt, { actor: retryAfterPr.author, prNumber: 24 }));
+
   const bounties: MockBounty[] = [
     withEvents(intl, 24 * 9),
     withEvents(dual, 24 * 12),
@@ -212,12 +211,12 @@ export function seedDatabase(now: Date): MockDb {
     bounty('taskq-cli', 15, 'Add a --json flag to every CLI command', BODIES.jsonFlag, 300, ['feature', 'cli', 'good first issue'], 24 * 6),
     bounty('docs', 18, 'Document the plugin API with runnable examples', BODIES.pluginDocs, 150, ['docs'], 24 * 4),
     withEvents(durations, 0.05),
-    bounty('fetchkit', 22, 'Rate limiter ignores the Retry-After header', BODIES.retryAfter, 350, ['bug', 'good first issue'], 20),
+    withEvents(retryAfter, 1),
     bounty('fetchkit', 23, 'Stream large responses instead of buffering them', BODIES.streaming, 1000, ['performance'], 5),
   ];
 
   return {
-    version: 3,
+    version: 4,
     users: users(at),
     repositories: REPOSITORIES,
     bounties,

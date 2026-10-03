@@ -53,7 +53,8 @@ model GithubRepo {
   createdAt DateTime @default(now()) @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @db.Timestamptz(3)
 
-  issues Issue[]
+  issues       Issue[]
+  pullRequests PullRequest[]
 }
 
 model Issue {
@@ -75,9 +76,10 @@ model Issue {
   createdAt DateTime  @default(now()) @db.Timestamptz(3)
   updatedAt DateTime  @updatedAt @db.Timestamptz(3)
 
-  githubRepo GithubRepo     @relation(fields: [githubRepoId], references: [id])
-  paidOutTo  GithubAccount? @relation(fields: [paidOutToId], references: [id])
-  payout     Payout?
+  githubRepo   GithubRepo     @relation(fields: [githubRepoId], references: [id])
+  paidOutTo    GithubAccount? @relation(fields: [paidOutToId], references: [id])
+  payout       Payout?
+  pullRequests PullRequest[]
 
   @@unique([githubRepoId, githubIssueNumber])
   @@index([githubRepoId])
@@ -97,4 +99,96 @@ model Payout {
   recipient GithubAccount @relation(fields: [recipientGithubId], references: [githubId])
 
   @@index([recipientGithubId])
+}
+
+enum PullRequestState {
+  open
+  merged
+  closed
+}
+
+/// A pull request that references a bounty issue. Kept in sync from the review webhook.
+model PullRequest {
+  id              String           @id @default(cuid())
+  githubRepoId    String
+  issueId         String
+  number          Int
+  title           String
+  url             String
+  authorLogin     String
+  authorAvatarUrl String?
+  state           PullRequestState @default(open)
+  headSha         String
+
+  openedAt  DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  githubRepo GithubRepo @relation(fields: [githubRepoId], references: [id])
+  issue      Issue      @relation(fields: [issueId], references: [id])
+  reviews    Review[]
+
+  @@unique([githubRepoId, number])
+  @@index([issueId])
+}
+
+enum ReviewStatus {
+  pending
+  completed
+  failed
+}
+
+enum CiState {
+  passed
+  failed
+  none
+  timeout
+}
+
+/// One review run of one head commit. The unique key makes a redelivered webhook a no-op.
+model Review {
+  id            String       @id @default(cuid())
+  pullRequestId String
+  headSha       String
+  status        ReviewStatus @default(pending)
+  ciState       CiState?
+  /// Names of the CI jobs that failed, shown to the maintainer.
+  failedJobs    String[]     @default([])
+  /// Files left out of the model context, with the reason.
+  contextNotes  String[]     @default([])
+  /// Why the run as a whole failed; null otherwise.
+  error         String?
+
+  createdAt   DateTime  @default(now()) @db.Timestamptz(3)
+  completedAt DateTime? @db.Timestamptz(3)
+
+  pullRequest PullRequest      @relation(fields: [pullRequestId], references: [id])
+  results     ReviewerResult[]
+
+  @@unique([pullRequestId, headSha])
+}
+
+enum ReviewVerdict {
+  approve
+  changes
+}
+
+/// What one model said about one review run.
+model ReviewerResult {
+  id           String         @id @default(cuid())
+  reviewId     String
+  /// "claude" or "gemini".
+  reviewer     String
+  model        String?
+  verdict      ReviewVerdict?
+  /// The validated structured answer; null when this reviewer failed.
+  output       Json?
+  error        String?
+  inputTokens  Int?
+  outputTokens Int?
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  review Review @relation(fields: [reviewId], references: [id])
+
+  @@unique([reviewId, reviewer])
 }

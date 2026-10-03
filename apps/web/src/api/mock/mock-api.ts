@@ -4,6 +4,7 @@ import { ApiError, type ApiClient } from '../client';
 import { delay, getDb, saveDb } from './db';
 import { MOCK_DEVELOPER_ID } from './seed';
 import { event, fake } from './factory';
+import { checkOf, reviewer } from './reviews';
 import { releaseHeldPayouts } from './simulate';
 import type { MockBounty, MockRepository } from './types';
 import {
@@ -189,6 +190,26 @@ const rawMockApi: ApiClient = {
     db.bounties.push(bounty);
     saveDb();
     return toBounty(bounty);
+  },
+
+  async rerunReview(reviewId) {
+    await delay();
+    requireUser();
+    const submission = getDb()
+      .bounties.flatMap((b) => b.submissions)
+      .find((s) => s.retryableReviewId === reviewId);
+    if (!submission) throw new ApiError(409, 'Only a review that ended in an error can be run again.');
+    const answers = submission.check.reviewers.map((r) =>
+      r.verdict === 'error' ? reviewer(r.reviewer === 'Claude' ? 'Claude' : 'Gemini', 'approve', 'Acceptance criteria met.') : r,
+    );
+    submission.check = checkOf(
+      reviewer('Claude', 'pending', null),
+      reviewer('Gemini', 'pending', null),
+    );
+    submission.retryableReviewId = null;
+    submission.checkResolvesAt = new Date(Date.now() + 6_000).toISOString();
+    submission.checkOutcome = checkOf(answers[0], answers[1]);
+    saveDb();
   },
 
   async listMySubmissions(): Promise<MySubmission[]> {

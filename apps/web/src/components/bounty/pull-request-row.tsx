@@ -6,10 +6,11 @@ import { Avatar } from '@/components/ui/avatar';
 import { KeyValue } from '@/components/common/key-value';
 import { RelativeTime } from '@/components/common/relative-time';
 import { PR_STATE, toneText } from './status';
+import { ReviewDetails } from './review-details';
 import { VerdictPill } from './verdict-pill';
 
 /** A pull request submitted against a bounty, with the check on its head commit. */
-export function PullRequestRow({ submission }: { submission: Submission }) {
+export function PullRequestRow({ submission, canRerun = false }: { submission: Submission; canRerun?: boolean }) {
   const state = PR_STATE[submission.state];
   const Icon = state.icon;
   return (
@@ -44,6 +45,7 @@ export function PullRequestRow({ submission }: { submission: Submission }) {
             updated <RelativeTime iso={submission.updatedAt} />
           </span>
         </div>
+        <ReviewDetails submission={submission} canRerun={canRerun} />
       </div>
     </li>
   );

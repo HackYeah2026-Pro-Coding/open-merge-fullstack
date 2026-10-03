@@ -22,7 +22,7 @@ function load(): MockDb {
   }
   if (raw) {
     const parsed = JSON.parse(raw) as MockDb;
-    if (parsed.version === 3) return parsed;
+    if (parsed.version === 4) return parsed;
   }
   return seedDatabase(new Date());
 }

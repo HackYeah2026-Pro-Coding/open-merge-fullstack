@@ -78,6 +78,15 @@ export function useCreateBounty() {
   });
 }
 
+/** Runs a failed AI review again; the bounty refetches and polls while the new run is pending. */
+export function useRerunReview() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (reviewId: string) => api.rerunReview(reviewId),
+    onSuccess: () => client.invalidateQueries({ queryKey: ['bounty'] }),
+  });
+}
+
 /**
  * Who is signed in changed: drop per-user data and wait for the new session, so
  * callers can navigate as soon as the mutation settles.

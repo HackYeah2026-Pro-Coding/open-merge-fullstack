@@ -11,6 +11,17 @@ const ago = (h: number) => new Date(Date.now() - h * HOUR).toISOString();
 
 const REWARD = { amount: '750000000', symbol: 'USDC', decimals: 6 };
 
+/** A reviewer's half of the pill; the preview shows verdicts only, so no detail is needed. */
+const half = (reviewer: string, verdict: 'approve' | 'changes') => ({
+  reviewer,
+  verdict,
+  summary: null,
+  model: null,
+  confidence: null,
+  criteria: [],
+  risks: [],
+});
+
 const PRS: Submission[] = [
   {
     id: 'preview-43',
@@ -23,10 +34,13 @@ const PRS: Submission[] = [
     check: {
       state: 'passed',
       reviewers: [
-        { reviewer: 'Claude', verdict: 'approve', summary: null },
-        { reviewer: 'Gemini', verdict: 'approve', summary: null },
+        half('Claude', 'approve'),
+        half('Gemini', 'approve'),
       ],
     },
+    ci: { state: 'passed', failedJobs: [] },
+    retryableReviewId: null,
+    reviewedAt: ago(3),
     openedAt: ago(20),
     updatedAt: ago(3),
   },
@@ -41,10 +55,13 @@ const PRS: Submission[] = [
     check: {
       state: 'failed',
       reviewers: [
-        { reviewer: 'Claude', verdict: 'changes', summary: null },
-        { reviewer: 'Gemini', verdict: 'approve', summary: null },
+        half('Claude', 'changes'),
+        half('Gemini', 'approve'),
       ],
     },
+    ci: { state: 'passed', failedJobs: [] },
+    retryableReviewId: null,
+    reviewedAt: ago(30),
     openedAt: ago(120),
     updatedAt: ago(30),
   },

@@ -8,7 +8,8 @@ import { SWAGGER_PATH, setupSwagger } from './core/swagger';
 import type { Env } from './config/env';
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule);
+  // rawBody keeps the exact bytes GitHub signed, which webhook signature checks need.
+  const app = await NestFactory.create(AppModule, { rawBody: true });
   const config = app.get(ConfigService<Env, true>);
 
   app.setGlobalPrefix('api');

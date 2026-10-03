@@ -2,6 +2,7 @@ import type { User } from '@escrow/shared';
 import { env } from '@/lib/env';
 import { getDb, saveDb } from './db';
 import { event, fake } from './factory';
+import { checkOf, reviewer } from './reviews';
 import type { MockBounty, MockSubmission } from './types';
 
 /**
@@ -52,23 +53,17 @@ export function simulateOpenPullRequest(repo: string, issueNumber: number, autho
     author: actorOf(author),
     state: 'open',
     headSha: fake.sha(),
-    check: {
-      state: 'pending',
-      reviewers: [
-        { reviewer: 'Claude', verdict: 'pending', summary: null },
-        { reviewer: 'Gemini', verdict: 'pending', summary: null },
-      ],
-    },
+    check: checkOf(reviewer('Claude', 'pending', null), reviewer('Gemini', 'pending', null)),
+    ci: null,
+    retryableReviewId: null,
+    reviewedAt: null,
     openedAt: now.toISOString(),
     updatedAt: now.toISOString(),
     checkResolvesAt: new Date(now.getTime() + 8_000).toISOString(),
-    checkOutcome: {
-      state: 'passed',
-      reviewers: [
-        { reviewer: 'Claude', verdict: 'approve', summary: 'Change matches the issue and includes a test.' },
-        { reviewer: 'Gemini', verdict: 'approve', summary: 'Acceptance criteria met.' },
-      ],
-    },
+    checkOutcome: checkOf(
+      reviewer('Claude', 'approve', 'Change matches the issue and includes a test.'),
+      reviewer('Gemini', 'approve', 'Acceptance criteria met.'),
+    ),
   };
   bounty.submissions.push(submission);
   bounty.events.push(event('pr_opened', submission.openedAt, { actor: submission.author, prNumber: number }));

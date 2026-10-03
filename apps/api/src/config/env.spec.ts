@@ -8,6 +8,10 @@ const PRODUCTION = {
   SESSION_SECRET: 's'.repeat(32),
   GITHUB_CLIENT_ID: 'id',
   GITHUB_CLIENT_SECRET: 'secret',
+  GITHUB_WEBHOOK_SECRET: 'hook',
+  ANTHROPIC_API_KEY: 'anthropic-key',
+  GEMINI_API_KEY: 'gemini-key',
+  GEMINI_MODEL: 'gemini-model',
 };
 
 describe('validateEnv', () => {
@@ -31,6 +35,18 @@ describe('validateEnv', () => {
     expect(() => validateEnv({ ...PRODUCTION, GITHUB_CLIENT_ID: '', GITHUB_CLIENT_SECRET: '' })).toThrow(
       'GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET: required in production',
     );
+  });
+
+  it('requires the AI review configuration in production', () => {
+    expect(() => validateEnv({ ...PRODUCTION, GEMINI_API_KEY: '', GITHUB_WEBHOOK_SECRET: ' ' })).toThrow(
+      'GITHUB_WEBHOOK_SECRET, GEMINI_API_KEY: required in production',
+    );
+  });
+
+  it('boots in development without the AI review configuration and defaults the Claude model', () => {
+    const env = validateEnv(BASE);
+    expect(env.ANTHROPIC_API_KEY).toBeUndefined();
+    expect(env.CLAUDE_REVIEW_MODEL).toBe('claude-opus-5-5');
   });
 
   it('requires SESSION_SECRET in production', () => {
