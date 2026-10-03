@@ -35,6 +35,7 @@ export const httpApi: ApiClient = {
   signIn: async (next) => {
     window.location.assign(`/api/auth/github?next=${encodeURIComponent(next)}`);
   },
+  openOwnerView: () => request('/auth/owner', { method: 'POST' }),
   signOut: () => request('/auth/sign-out', { method: 'POST' }),
 
   getProject: () => request('/project'),

@@ -1,7 +1,8 @@
 import { Link, NavLink, useLocation } from 'react-router';
 import type { User } from '@escrow/shared';
-import { Menu, Wallet } from 'lucide-react';
+import { Menu, Wallet, X } from 'lucide-react';
 import { useSession } from '@/api/queries';
+import { useSignOutAction } from '@/app/session-actions';
 import { cn } from '@/lib/cn';
 import { shortKey } from '@/lib/format';
 import { LogoMark } from '@/components/common/icons';
@@ -53,6 +54,26 @@ function WalletChip({ user }: { user: User }) {
   );
 }
 
+/** Marks the owner view so it is never mistaken for a developer's screen, and leaves it in one click. */
+function OwnerViewPill({ user }: { user: User }) {
+  const signOut = useSignOutAction();
+  return (
+    <Tooltip content="Back to the developer view">
+      <button
+        type="button"
+        onClick={() => signOut.run(user)}
+        disabled={signOut.pending}
+        className="hidden h-8 items-center gap-2 rounded-full border border-brand/35 bg-brand/10 pr-2 pl-3 text-[13px] font-medium text-brand transition-colors duration-120 hover:bg-brand/15 disabled:opacity-60 sm:inline-flex"
+      >
+        <span className="size-1.5 rounded-full bg-brand" aria-hidden />
+        Owner view
+        <X className="size-3.5" aria-hidden />
+        <span className="sr-only">: exit</span>
+      </button>
+    </Tooltip>
+  );
+}
+
 export function TopBar() {
   const session = useSession();
   const location = useLocation();
@@ -87,7 +108,7 @@ export function TopBar() {
             <Skeleton className="size-[30px] rounded-full" />
           ) : user ? (
             <>
-              {user.role === 'developer' && <WalletChip user={user} />}
+              {user.role === 'developer' ? <WalletChip user={user} /> : <OwnerViewPill user={user} />}
               <UserMenu user={user} />
             </>
           ) : (

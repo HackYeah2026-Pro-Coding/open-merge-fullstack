@@ -25,12 +25,12 @@ export interface MockBounty {
 }
 
 export interface MockDb {
-  version: 1;
+  version: 2;
   users: User[];
   bounties: MockBounty[];
+  /** The developer signed in with GitHub, if any. Kept while the owner view is open. */
   sessionUserId: string | null;
-  /** Who "Continue with GitHub" signs in as. Switched from the mock panel. */
-  signInAsUserId: string;
+  ownerView: boolean;
   nextIssueNumber: number;
   nextPrNumber: number;
 }

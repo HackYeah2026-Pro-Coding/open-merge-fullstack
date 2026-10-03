@@ -1,8 +1,8 @@
-import { Link, useNavigate } from 'react-router';
+import { Link } from 'react-router';
 import type { User } from '@escrow/shared';
 import { ArrowUpRight, LayoutDashboard, LogOut, UserRound } from 'lucide-react';
-import { toast } from 'sonner';
-import { useProject, useSignOut } from '@/api/queries';
+import { useProject } from '@/api/queries';
+import { useOwnerViewAction, useSignOutAction } from '@/app/session-actions';
 import { Avatar } from '@/components/ui/avatar';
 import {
   DropdownMenu,
@@ -14,18 +14,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 export function UserMenu({ user }: { user: User }) {
-  const navigate = useNavigate();
-  const signOut = useSignOut();
   const project = useProject();
-
-  const onSignOut = () =>
-    signOut.mutate(undefined, {
-      onSuccess: () => {
-        toast.success('Signed out');
-        void navigate('/');
-      },
-      onError: (error) => toast.error('Could not sign out', { description: error.message }),
-    });
+  const signOut = useSignOutAction();
+  const owner = useOwnerViewAction();
+  const isOwner = user.role === 'maintainer';
 
   return (
     <DropdownMenu>
@@ -41,11 +33,11 @@ export function UserMenu({ user }: { user: User }) {
           <p className="mt-0.5 flex items-center gap-1.5 text-[13px] text-fg-subtle">
             <span className="data">@{user.githubLogin}</span>
             <span aria-hidden>·</span>
-            <span>{user.role === 'maintainer' ? 'Maintainer' : 'Developer'}</span>
+            <span>{isOwner ? 'Project owner' : 'Developer'}</span>
           </p>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        {user.role === 'maintainer' && (
+        {isOwner && (
           <DropdownMenuItem asChild>
             <Link to="/dashboard">
               <LayoutDashboard />
@@ -59,6 +51,12 @@ export function UserMenu({ user }: { user: User }) {
             Account
           </Link>
         </DropdownMenuItem>
+        {!isOwner && (
+          <DropdownMenuItem onSelect={() => owner.open('/dashboard')} disabled={owner.pending}>
+            <LayoutDashboard />
+            Open owner view
+          </DropdownMenuItem>
+        )}
         {project.data && (
           <DropdownMenuItem asChild>
             <a href={project.data.url} target="_blank" rel="noreferrer">
@@ -68,9 +66,9 @@ export function UserMenu({ user }: { user: User }) {
           </DropdownMenuItem>
         )}
         <DropdownMenuSeparator />
-        <DropdownMenuItem onSelect={onSignOut} disabled={signOut.isPending}>
+        <DropdownMenuItem onSelect={() => signOut.run(user)} disabled={signOut.pending}>
           <LogOut />
-          Sign out
+          {isOwner ? 'Exit owner view' : 'Sign out'}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

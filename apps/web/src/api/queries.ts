@@ -67,22 +67,38 @@ export function useCreateBounty() {
   });
 }
 
-export function useSignIn() {
+/**
+ * Who is signed in changed: drop per-user data and wait for the new session, so
+ * callers can navigate as soon as the mutation settles.
+ */
+function useSwitchIdentity<TVariables>(mutationFn: (variables: TVariables) => Promise<void>) {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (next: string) => api.signIn(next),
-    onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.session }),
+    mutationFn,
+    onSuccess: async () => {
+      client.removeQueries({ queryKey: ['me'] });
+      await client.invalidateQueries({ queryKey: queryKeys.session });
+    },
   });
 }
 
+export function useSignIn() {
+  return useSwitchIdentity((next: string) => api.signIn(next));
+}
+
+export function useOpenOwnerView() {
+  return useSwitchIdentity(() => api.openOwnerView());
+}
+
+/**
+ * Leaves the owner view if it is open, otherwise signs the developer out.
+ * `leave` runs before the session is refetched, so the page can move off a
+ * route that would otherwise redirect to sign-in first.
+ */
 export function useSignOut() {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: () => api.signOut(),
-    onSuccess: () => {
-      client.setQueryData(queryKeys.session, { user: null });
-      client.removeQueries({ queryKey: ['me'] });
-    },
+  return useSwitchIdentity(async (leave: () => void) => {
+    await api.signOut();
+    leave();
   });
 }
 

@@ -1,6 +1,7 @@
 import { Link, Navigate, Outlet, useLocation } from 'react-router';
 import { ShieldAlert } from 'lucide-react';
 import { useProject, useSession } from '@/api/queries';
+import { useOwnerViewAction } from './session-actions';
 import { Container } from '@/components/layout/container';
 import { EmptyState, ErrorState } from '@/components/common/states';
 import { Button } from '@/components/ui/button';
@@ -39,6 +40,7 @@ export function RequireAuth() {
 export function RequireMaintainer() {
   const session = useSession();
   const project = useProject();
+  const owner = useOwnerViewAction();
   if (session.data?.user?.role === 'maintainer') return <Outlet />;
 
   const repo = project.data ? `${project.data.owner}/${project.data.repo}` : 'this repository';
@@ -46,11 +48,16 @@ export function RequireMaintainer() {
     <Container className="pt-14">
       <EmptyState
         icon={ShieldAlert}
-        title={`This page is for the maintainer of ${repo}. Open bounties are listed for everyone.`}
+        title={`This page belongs to the project owner of ${repo}. Open the owner view to manage bounties.`}
         action={
-          <Button asChild size="sm">
-            <Link to="/bounties">Browse bounties</Link>
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="primary" onClick={() => owner.open()} pending={owner.pending}>
+              Open owner view
+            </Button>
+            <Button asChild size="sm">
+              <Link to="/bounties">Browse bounties</Link>
+            </Button>
+          </div>
         }
       />
     </Container>

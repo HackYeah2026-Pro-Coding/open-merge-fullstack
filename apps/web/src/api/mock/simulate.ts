@@ -111,10 +111,3 @@ export function simulateMerge(issueNumber: number, prNumber: number): void {
   bounty.updatedAt = now;
   saveDb();
 }
-
-export function setMockSession(userId: string | null): void {
-  const db = getDb();
-  db.sessionUserId = userId;
-  if (userId) db.signInAsUserId = userId;
-  saveDb();
-}

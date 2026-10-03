@@ -3,11 +3,10 @@ import { useMatch } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { FlaskConical, GitMerge, GitPullRequestCreate, RotateCcw, X } from 'lucide-react';
 import { toast } from 'sonner';
-import { useBounty, useSession } from '@/api/queries';
+import { useBounty } from '@/api/queries';
 import { getDb, resetDb } from '@/api/mock/db';
-import { MOCK_DEVELOPER_ID, MOCK_MAINTAINER_ID } from '@/api/mock/seed';
-import { setMockSession, simulateMerge, simulateOpenPullRequest } from '@/api/mock/simulate';
-import { cn } from '@/lib/cn';
+import { MOCK_DEVELOPER_ID } from '@/api/mock/seed';
+import { simulateMerge, simulateOpenPullRequest } from '@/api/mock/simulate';
 import { Button } from '@/components/ui/button';
 
 const OPEN_KEY = 'openmerge.mock.panel';
@@ -29,20 +28,13 @@ function writeOpen(open: boolean): void {
   }
 }
 
-const PERSONAS = [
-  { id: null, label: 'Signed out' },
-  { id: MOCK_MAINTAINER_ID, label: 'Maintainer' },
-  { id: MOCK_DEVELOPER_ID, label: 'Developer' },
-] as const;
-
 /**
- * Development-only controls for the in-browser mock: switch who is signed in and
- * play the parts of GitHub (pull requests, merges) that webhooks deliver in production.
+ * Development-only controls for the in-browser mock: play the parts of GitHub
+ * (pull requests, merges) that webhooks deliver in production.
  */
 export function MockPanel() {
   const [open, setOpen] = useState(readOpen);
   const client = useQueryClient();
-  const session = useSession();
   const match = useMatch('/bounties/:number');
   const issueNumber = Number(match?.params.number);
   const bounty = useBounty(issueNumber, { enabled: Number.isInteger(issueNumber) });
@@ -52,7 +44,6 @@ export function MockPanel() {
     writeOpen(next);
   };
   const refresh = () => client.invalidateQueries();
-  const userId = session.data?.user?.id ?? null;
 
   const run = (label: string, action: () => void) => {
     action();
@@ -73,7 +64,7 @@ export function MockPanel() {
     );
   }
 
-  const developer = getDb().users.find((u) => u.id === (session.data?.user?.role === 'developer' ? userId : MOCK_DEVELOPER_ID));
+  const developer = getDb().users.find((u) => u.id === MOCK_DEVELOPER_ID);
   const live = bounty.data && (bounty.data.status === 'open' || bounty.data.status === 'in_review');
   const openPrs = bounty.data?.submissions.filter((s) => s.state === 'open') ?? [];
 
@@ -85,7 +76,7 @@ export function MockPanel() {
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="label">Mock API</p>
-          <p className="mt-1 text-fg-subtle">Stands in for GitHub and escrow.</p>
+          <p className="mt-1 text-fg-subtle">Stands in for GitHub webhooks and escrow.</p>
         </div>
         <button
           type="button"
@@ -97,23 +88,7 @@ export function MockPanel() {
         </button>
       </div>
 
-      <p className="mt-4 mb-2 font-medium text-fg-muted">Session</p>
-      <div className="grid grid-cols-3 gap-1 rounded-sm border bg-bg p-0.5">
-        {PERSONAS.map((p) => (
-          <button
-            key={p.label}
-            type="button"
-            aria-pressed={userId === p.id}
-            onClick={() => run(p.id ? `Signed in as ${p.label.toLowerCase()}` : 'Signed out', () => setMockSession(p.id))}
-            className={cn(
-              'h-7 rounded-[4px] text-[12px] font-medium transition-colors duration-120',
-              userId === p.id ? 'bg-surface-2 text-fg' : 'text-fg-subtle hover:text-fg',
-            )}
-          >
-            {p.label}
-          </button>
-        ))}
-      </div>
+      {!bounty.data && <p className="mt-4 text-fg-subtle">Open a bounty to simulate pull requests and merges.</p>}
 
       {bounty.data && (
         <>

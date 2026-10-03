@@ -2,6 +2,7 @@ import type { ActivityItem, BountySummary, MySubmission, ProjectStats, User } fr
 import { env } from '@/lib/env';
 import { ApiError, type ApiClient } from '../client';
 import { delay, getDb, saveDb } from './db';
+import { MOCK_DEVELOPER_ID } from './seed';
 import { event, fake } from './factory';
 import { releaseHeldPayouts } from './simulate';
 import { MOCK_TOKEN, type MockBounty } from './types';
@@ -11,6 +12,7 @@ const challenges = new Map<string, { userId: string; address: string; message: s
 
 function currentUser(): User | null {
   const db = getDb();
+  if (db.ownerView) return db.users.find((u) => u.role === 'maintainer') ?? null;
   return db.users.find((u) => u.id === db.sessionUserId) ?? null;
 }
 
@@ -45,14 +47,21 @@ const rawMockApi: ApiClient = {
 
   async signIn() {
     await delay();
-    const db = getDb();
-    db.sessionUserId = db.signInAsUserId;
+    getDb().sessionUserId = MOCK_DEVELOPER_ID;
+    saveDb();
+  },
+
+  async openOwnerView() {
+    await delay();
+    getDb().ownerView = true;
     saveDb();
   },
 
   async signOut() {
     await delay();
-    getDb().sessionUserId = null;
+    const db = getDb();
+    if (db.ownerView) db.ownerView = false;
+    else db.sessionUserId = null;
     saveDb();
   },
 

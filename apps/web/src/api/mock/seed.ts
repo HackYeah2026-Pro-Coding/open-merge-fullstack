@@ -11,7 +11,8 @@ function usdc(whole: number): string {
   return (BigInt(whole) * USDC).toString();
 }
 
-export const MOCK_MAINTAINER_ID = 'u_maintainer';
+const MOCK_MAINTAINER_ID = 'u_maintainer';
+/** The developer "Continue with GitHub" signs in as. */
 export const MOCK_DEVELOPER_ID = 'u_tomek';
 
 function users(at: (h: number) => string): User[] {
@@ -194,11 +195,11 @@ export function seedDatabase(now: Date): MockDb {
   ];
 
   return {
-    version: 1,
+    version: 2,
     users: users(at),
     bounties,
     sessionUserId: null,
-    signInAsUserId: MOCK_DEVELOPER_ID,
+    ownerView: false,
     nextIssueNumber: 24,
     nextPrNumber: 47,
   };

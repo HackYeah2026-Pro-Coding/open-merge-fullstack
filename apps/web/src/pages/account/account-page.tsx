@@ -37,7 +37,7 @@ export function AccountPage() {
           <div className="min-w-0 flex-1">
             <p className="flex flex-wrap items-center gap-2 font-medium text-fg">
               {user.name ?? user.githubLogin}
-              <Badge tone="neutral">{user.role === 'maintainer' ? 'Maintainer' : 'Developer'}</Badge>
+              <Badge tone="neutral">{user.role === 'maintainer' ? 'Project owner' : 'Developer'}</Badge>
             </p>
             <a
               href={`https://github.com/${user.githubLogin}`}

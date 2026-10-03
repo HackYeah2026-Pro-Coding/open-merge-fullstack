@@ -19,9 +19,16 @@ import type {
  * product is usable before the endpoints land.
  */
 export interface ApiClient {
+  /** The project owner while the owner view is open, otherwise the signed-in developer (or nobody). */
   getSession(): Promise<Session>;
-  /** Starts GitHub sign-in. The HTTP client leaves the page; `next` is where to land afterwards. */
+  /** Starts GitHub sign-in for a developer. The HTTP client leaves the page; `next` is where to land afterwards. */
   signIn(next: string): Promise<void>;
+  /**
+   * Opens the project owner view. There is a single owner per project, so this
+   * takes no credentials; the developer session underneath is kept as it was.
+   */
+  openOwnerView(): Promise<void>;
+  /** Leaves the owner view when it is open (back to the developer session), otherwise signs the developer out. */
   signOut(): Promise<void>;
 
   getProject(): Promise<Project>;
