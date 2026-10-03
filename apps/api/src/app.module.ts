@@ -8,6 +8,7 @@ import { HealthModule } from './health/health.module';
 import { SolanaModule } from './solana/solana.module';
 import { MergeModule } from './merge/merge.module';
 import { RepoModule } from './repo/repo.module';
+import { WalletModule } from './wallet/wallet.module';
 
 @Module({
   imports: [
@@ -23,6 +24,8 @@ import { RepoModule } from './repo/repo.module';
     SolanaModule,
     MergeModule,
     RepoModule,
+    AuthModule,
+    WalletModule,
     // Feature modules go here.
   ],
 })
