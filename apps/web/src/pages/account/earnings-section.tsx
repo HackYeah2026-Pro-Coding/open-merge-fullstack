@@ -101,7 +101,7 @@ export function EarningsSection() {
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-3">
         <Stat label="Earned">
-          <Amount value={paid} animate large />
+          <Amount value={paid} animate large className="text-ok" />
         </Stat>
         <Stat label="Held">
           <Amount value={held} animate large />
