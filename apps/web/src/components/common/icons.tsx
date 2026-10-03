@@ -8,14 +8,3 @@ export function GithubIcon(props: SVGProps<SVGSVGElement>) {
     </svg>
   );
 }
-
-/** OpenMerge mark: a branch joining the main line. */
-export function LogoMark(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden {...props}>
-      <path d="M6 3v18M6 9c0 4.2 2.8 6 7 6h4" stroke="var(--brand)" strokeWidth="2.2" strokeLinecap="round" />
-      <circle cx="17.5" cy="15" r="2.6" fill="var(--bg)" stroke="currentColor" strokeWidth="2" />
-      <circle cx="6" cy="3.6" r="2" fill="currentColor" />
-    </svg>
-  );
-}

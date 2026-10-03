@@ -5,7 +5,7 @@ import { useSession } from '@/api/queries';
 import { useSignOutAction } from '@/app/session-actions';
 import { cn } from '@/lib/cn';
 import { shortKey } from '@/lib/format';
-import { LogoMark } from '@/components/common/icons';
+import { LogoHorizontal } from '@/components/common/logo';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip } from '@/components/ui/tooltip';
@@ -23,9 +23,8 @@ function navItems(user: User | null | undefined) {
 
 export function Logo() {
   return (
-    <Link to="/" className="flex items-center gap-2 rounded-sm text-fg" aria-label="OpenMerge home">
-      <LogoMark className="size-[22px]" />
-      <span className="text-[15px] font-semibold tracking-[-0.01em]">OpenMerge</span>
+    <Link to="/" className="flex shrink-0 items-center rounded-sm text-fg" aria-label="OpenMerge home">
+      <LogoHorizontal className="h-5 w-auto" />
     </Link>
   );
 }

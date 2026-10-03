@@ -8,7 +8,8 @@ import { Container } from '@/components/layout/container';
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { GithubIcon, LogoMark } from '@/components/common/icons';
+import { GithubIcon } from '@/components/common/icons';
+import { LogoMark } from '@/components/common/logo';
 
 /** Only same-site paths are honoured, so `next` cannot bounce someone to another origin. */
 function safeNext(raw: string | null): string {
@@ -72,7 +73,7 @@ export function SignInPage() {
   return (
     <Container className="flex min-h-[calc(100dvh-56px-200px)] items-center py-16">
       <div className="w-full max-w-sm">
-        <LogoMark className="size-9" />
+        <LogoMark className="h-9 w-auto text-fg" />
         <h1 className="mt-8 text-title font-semibold">Sign in to OpenMerge</h1>
         <p className="mt-3 text-body text-fg-muted">
           Your GitHub account identifies you on pull requests, so a merge can be matched to the right payout.
