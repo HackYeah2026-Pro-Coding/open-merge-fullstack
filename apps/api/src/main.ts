@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './core/filters/http-exception.filter';
+import { SWAGGER_PATH, setupSwagger } from './core/swagger';
 import type { Env } from './config/env';
 
 async function bootstrap(): Promise<void> {
@@ -19,12 +20,15 @@ async function bootstrap(): Promise<void> {
   // are same-origin. CORS is here for the deployed / ngrok case.
   app.enableCors({ origin: config.get('WEB_ORIGIN', { infer: true }), credentials: true });
   app.enableShutdownHooks();
+  setupSwagger(app);
 
   const port = config.get('PORT', { infer: true });
   // 0.0.0.0 rather than loopback: required for the process to be reachable
   // from outside its container on Render and friends.
   await app.listen(port, '0.0.0.0');
-  new Logger('Bootstrap').log(`API listening on http://localhost:${port}/api`);
+  const logger = new Logger('Bootstrap');
+  logger.log(`API listening on http://localhost:${port}/api`);
+  logger.log(`API docs at http://localhost:${port}/api/${SWAGGER_PATH}`);
 }
 
 void bootstrap();
