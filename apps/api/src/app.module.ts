@@ -5,6 +5,7 @@ import { validateEnv } from './config/env';
 import { PrismaModule } from './prisma/prisma.module';
 import { HealthModule } from './health/health.module';
 import { SolanaModule } from './solana/solana.module';
+import { MergeModule } from './merge/merge.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { SolanaModule } from './solana/solana.module';
     PrismaModule,
     HealthModule,
     SolanaModule,
+    MergeModule,
     // Feature modules go here.
   ],
 })
