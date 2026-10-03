@@ -6,6 +6,7 @@ import { LandingPage } from '@/pages/landing/landing-page';
 import { BountiesPage } from '@/pages/bounties/bounties-page';
 import { BountyPage } from '@/pages/bounties/bounty-page';
 import { SignInPage } from '@/pages/auth/sign-in-page';
+import { TokenPage } from '@/pages/token/token-page';
 import { AccountPage } from '@/pages/account/account-page';
 import { DashboardPage } from '@/pages/dashboard/dashboard-page';
 import { NewBountyPage } from '@/pages/dashboard/new-bounty-page';
@@ -20,6 +21,7 @@ export const router = createBrowserRouter([
       { index: true, element: <LandingPage /> },
       { path: 'bounties', element: <BountiesPage /> },
       { path: 'bounties/:repo/:number', element: <BountyPage /> },
+      { path: 'token', element: <TokenPage /> },
       { path: 'sign-in', element: <SignInPage /> },
       {
         element: <RequireAuth />,
