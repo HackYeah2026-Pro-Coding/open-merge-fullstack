@@ -19,6 +19,10 @@ export const envSchema = z.object({
   LOCAL_DATABASE_URL: z.string().optional(),
   SUPABASE_DATABASE_URL: z.string().optional(),
   SUPABASE_DIRECT_URL: z.string().optional(),
+
+  // Optional GitHub token for REST API calls. Without it requests are anonymous:
+  // public repos only, 60 requests an hour.
+  GITHUB_TOKEN: z.string().optional(),
 });
 
 /** DATABASE_URL is derived from DB_TARGET rather than set directly. */

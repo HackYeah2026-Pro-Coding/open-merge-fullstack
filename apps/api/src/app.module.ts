@@ -6,6 +6,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { HealthModule } from './health/health.module';
 import { SolanaModule } from './solana/solana.module';
 import { MergeModule } from './merge/merge.module';
+import { RepoModule } from './repo/repo.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { MergeModule } from './merge/merge.module';
     HealthModule,
     SolanaModule,
     MergeModule,
+    RepoModule,
     // Feature modules go here.
   ],
 })
