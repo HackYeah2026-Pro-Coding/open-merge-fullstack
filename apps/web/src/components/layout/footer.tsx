@@ -19,6 +19,9 @@ export function Footer() {
           <Link to="/#how-it-works" className="hover:text-fg">
             How it works
           </Link>
+          <Link to="/token" className="hover:text-fg">
+            OMT token
+          </Link>
           {organization.data && (
             <a href={organization.data.url} target="_blank" rel="noreferrer" className="data hover:text-fg">
               {organization.data.login}

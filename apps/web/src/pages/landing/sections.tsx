@@ -70,6 +70,16 @@ export function TrustStatement() {
             state of a bounty. It cannot move the reward.
           </p>
           <p>Every lock and every payout is a transaction with a signature anyone can look up.</p>
+          <p>
+            Rewards are paid in OMT, our own token on Solana.{' '}
+            <Link
+              to="/token"
+              className="inline-flex items-center gap-1 font-medium text-fg underline-offset-4 hover:underline"
+            >
+              About the token
+              <ArrowRight className="size-3.5" aria-hidden />
+            </Link>
+          </p>
         </div>
       </Container>
     </section>
