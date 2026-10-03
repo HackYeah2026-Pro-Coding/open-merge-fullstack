@@ -14,6 +14,9 @@ export interface TokenMetadataResponse {
 // Resolves from dist/solana at runtime to apps/api/public.
 const TOKEN_IMAGE_PATH = path.resolve(__dirname, "../../public/logo-token.png");
 
+// Bump when the logo changes so wallets and explorers drop their cached copy.
+const TOKEN_IMAGE_VERSION = 2;
+
 @Controller("solana")
 export class SolanaController {
   constructor(private readonly config: ConfigService<Env, true>) {}
@@ -26,7 +29,7 @@ export class SolanaController {
       name: "OpenMerge Token",
       symbol: "OMT",
       description: "Official token of the OpenMerge project",
-      image: `${apiUrl}/api/solana/token-image`,
+      image: `${apiUrl}/api/solana/token-image?v=${TOKEN_IMAGE_VERSION}`,
     };
   }
 
