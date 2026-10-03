@@ -13,7 +13,7 @@ visible on screen has to look and behave like a finished product.
 2. A developer opens a pull request that solves the issue.
 3. The pull request is checked automatically (AI review, tests) and the result shows up on the commit like any other CI check.
 4. The maintainer merges whenever they decide to, regardless of the check result.
-5. On merge the reward is released to the developer's wallet. If the merged commit did not pass the check, the payout is flagged for a manual decision instead.
+5. On merge the reward is released to the developer's wallet, whatever the check said. The check informs the maintainer's decision to merge; it never gates the payout.
 
 The rule that shapes everything: **the party that holds the money must not be the one
 deciding who gets it.** Release conditions are enforced by an on-chain program, never by
