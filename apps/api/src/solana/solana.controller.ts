@@ -21,13 +21,12 @@ export class SolanaController {
   /** Off-chain metadata JSON referenced by the token's on-chain `uri`. */
   @Get("token-metadata")
   tokenMetadata(): TokenMetadataResponse {
-    // In dev WEB_ORIGIN is the Vite server, which proxies /api to this API.
-    const origin = this.config.get("WEB_ORIGIN", { infer: true }).replace(/\/+$/, "");
+    const apiUrl = this.config.get("API_URL", { infer: true }).replace(/\/+$/, "");
     return {
       name: "OpenMerge Token",
       symbol: "OMT",
       description: "Official token of the OpenMerge project",
-      image: `${origin}/api/solana/token-image`,
+      image: `${apiUrl}/api/solana/token-image`,
     };
   }
 
