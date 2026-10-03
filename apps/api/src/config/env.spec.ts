@@ -26,6 +26,7 @@ const PRODUCTION = {
   ANTHROPIC_API_KEY: 'anthropic-key',
   GEMINI_API_KEY: 'gemini-key',
   GEMINI_MODEL: 'gemini-model',
+  GITHUB_OWNER_LOGIN: 'owner',
 };
 
 describe('validateEnv', () => {
@@ -61,6 +62,18 @@ describe('validateEnv', () => {
     const env = validateEnv(BASE);
     expect(env.ANTHROPIC_API_KEY).toBeUndefined();
     expect(env.CLAUDE_REVIEW_MODEL).toBe('claude-opus-5-5');
+  });
+
+  it('requires the owner login in production', () => {
+    expect(() => validateEnv({ ...PRODUCTION, GITHUB_OWNER_LOGIN: '' })).toThrow(
+      'GITHUB_OWNER_LOGIN: required in production',
+    );
+  });
+
+  it('falls back to the organization as owner in development', () => {
+    const env = validateEnv({ ...BASE, GITHUB_ORG: 'acme' });
+    expect(env.GITHUB_ORG).toBe('acme');
+    expect(env.GITHUB_OWNER_LOGIN).toBe('acme');
   });
 
   it('requires SESSION_SECRET in production', () => {

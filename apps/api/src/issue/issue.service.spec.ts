@@ -26,7 +26,7 @@ describe('IssueService', () => {
         findUnique: jest.fn().mockResolvedValue({ id: 'repo_1', githubRepoName: 'acme/widgets' }),
       },
       issue: {
-        create: jest.fn().mockResolvedValue({ id: 'issue_1', title: input.title, body: input.body }),
+        create: jest.fn().mockResolvedValue({ id: 'issue_1', title: input.title, body: input.body, labels: [] }),
         update: jest.fn(),
         findMany: jest.fn(),
         findUnique: jest.fn(),
@@ -111,6 +111,20 @@ describe('IssueService', () => {
       where: { id: 'issue_1', githubIssueNumber: null },
       data: { githubIssueNumber: 42, githubIssueUrl: 'https://github.com/acme/widgets/issues/42' },
     });
+  });
+
+  it('stores the labels and applies them to the GitHub issue', async () => {
+    const { service, prisma, github } = setup();
+    prisma.issue.create.mockResolvedValue({ id: 'issue_1', title: input.title, body: input.body, labels: ['bug'] });
+    prisma.issue.update.mockResolvedValue({ id: 'issue_1', labels: ['bug'], rewardAmount: input.rewardAmount, createdAt });
+
+    await service.create({ ...input, labels: ['bug'] });
+
+    expect(prisma.issue.create).toHaveBeenCalledWith({ data: expect.objectContaining({ labels: ['bug'] }) });
+    expect(github.createIssue).toHaveBeenCalledWith(
+      { owner: 'acme', repo: 'widgets' },
+      { title: input.title, body: input.body, labels: ['bug'] },
+    );
   });
 
   it('locks and saves nothing when no GitHub token is configured', async () => {

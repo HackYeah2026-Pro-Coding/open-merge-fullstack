@@ -6,15 +6,17 @@ import { PrismaService } from '../prisma/prisma.service';
 import {
   type OAuthStatePayload,
   createOAuthState,
+  createOwnerToken,
   createSessionToken,
   readOAuthState,
+  readOwnerToken,
   readSessionToken,
   sameNonce,
 } from './auth-tokens';
 import { GithubOAuthService } from './github-oauth.service';
 import { safeNext } from './safe-next';
 import { InvalidTokenError } from './signed-token';
-import { toUser } from './to-user';
+import { toOwnerUser, toUser } from './to-user';
 
 /** Developer sign-in with GitHub. It identifies people; it has no say over funds. */
 @Injectable()
@@ -68,6 +70,35 @@ export class AuthService {
     }
     const account = await this.prisma.githubAccount.findUnique({ where: { githubId }, include: { wallet: true } });
     return account ? toUser(account) : null;
+  }
+
+  /**
+   * Token for the owner view. Deliberately asks for no credentials: there is one
+   * owner per organization and the demo opens it with a click.
+   */
+  ownerToken(): string {
+    return createOwnerToken(this.secret());
+  }
+
+  /** True for a valid owner-view token; false for none, a forged or an expired one. */
+  isOwnerView(token: string | undefined): boolean {
+    if (!token) return false;
+    try {
+      readOwnerToken(token, this.secret());
+      return true;
+    } catch (error) {
+      if (error instanceof InvalidTokenError) return false;
+      throw error;
+    }
+  }
+
+  async ownerUser(): Promise<User> {
+    const login = this.config.get('GITHUB_OWNER_LOGIN', { infer: true });
+    const account = await this.prisma.githubAccount.findFirst({
+      where: { githubLogin: { equals: login, mode: 'insensitive' } },
+      include: { wallet: true },
+    });
+    return toOwnerUser(login, account);
   }
 
   private secret(): string {

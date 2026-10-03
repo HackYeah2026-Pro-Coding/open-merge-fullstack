@@ -13,6 +13,8 @@ describe('RepoService', () => {
       getRepo: jest.fn().mockResolvedValue({
         fullName: 'nestjs/nest',
         htmlUrl: 'https://github.com/nestjs/nest',
+        description: 'A progressive Node.js framework',
+        isPrivate: false,
       }),
     };
     const prisma = {
@@ -41,7 +43,12 @@ describe('RepoService', () => {
       createdAt: createdAt.toISOString(),
     });
     expect(prisma.githubRepo.create).toHaveBeenCalledWith({
-      data: { githubRepoName: 'nestjs/nest', githubRepoUrl: 'https://github.com/nestjs/nest' },
+      data: {
+        githubRepoName: 'nestjs/nest',
+        githubRepoUrl: 'https://github.com/nestjs/nest',
+        description: 'A progressive Node.js framework',
+        isPrivate: false,
+      },
     });
   });
 
@@ -143,7 +150,12 @@ describe('RepoService', () => {
     expect(github.getRepo).toHaveBeenCalledWith(ref);
     expect(prisma.githubRepo.update).toHaveBeenCalledWith({
       where: { id: 'repo_1' },
-      data: { githubRepoName: 'nestjs/nest', githubRepoUrl: 'https://github.com/nestjs/nest' },
+      data: {
+        githubRepoName: 'nestjs/nest',
+        githubRepoUrl: 'https://github.com/nestjs/nest',
+        description: 'A progressive Node.js framework',
+        isPrivate: false,
+      },
     });
   });
 

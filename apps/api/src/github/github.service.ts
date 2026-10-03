@@ -15,6 +15,8 @@ export interface GithubRepoInfo {
   /** "owner/name" in GitHub's canonical casing. */
   fullName: string;
   htmlUrl: string;
+  description: string | null;
+  isPrivate: boolean;
 }
 
 /** The fields of GitHub's issue object this app uses. */
@@ -42,8 +44,18 @@ export class GithubService {
       throw new BadGatewayException(`GitHub returned ${res.status} for ${slug}: ${body.slice(0, 200)}`);
     }
 
-    const data = (await res.json()) as { full_name: string; html_url: string };
-    return { fullName: data.full_name, htmlUrl: data.html_url };
+    const data = (await res.json()) as {
+      full_name: string;
+      html_url: string;
+      description: string | null;
+      private: boolean;
+    };
+    return {
+      fullName: data.full_name,
+      htmlUrl: data.html_url,
+      description: data.description,
+      isPrivate: data.private,
+    };
   }
 
   /**
@@ -58,7 +70,7 @@ export class GithubService {
 
   async createIssue(
     { owner, repo }: GithubRepoRef,
-    issue: { title: string; body: string },
+    issue: { title: string; body: string; labels?: string[] },
   ): Promise<GithubIssueInfo> {
     this.assertCanCreateIssues();
     const slug = `${owner}/${repo}`;
@@ -67,7 +79,7 @@ export class GithubService {
       {
         method: 'POST',
         headers: { ...this.headers(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: issue.title, body: issue.body }),
+        body: JSON.stringify(issue),
       },
     );
 

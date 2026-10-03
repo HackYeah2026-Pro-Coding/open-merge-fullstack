@@ -1,6 +1,6 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, type GithubRepo } from '../generated/prisma/client';
-import { GithubService } from '../github/github.service';
+import { GithubService, type GithubRepoInfo } from '../github/github.service';
 import type { GithubRepoRef } from '../github/github-repo-url';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -18,6 +18,15 @@ function toResponse(repo: GithubRepo): RepoResponse {
     name: repo.githubRepoName,
     url: repo.githubRepoUrl,
     createdAt: repo.createdAt.toISOString(),
+  };
+}
+
+function repoData(info: GithubRepoInfo) {
+  return {
+    githubRepoName: info.fullName,
+    githubRepoUrl: info.htmlUrl,
+    description: info.description,
+    isPrivate: info.isPrivate,
   };
 }
 
@@ -49,7 +58,7 @@ export class RepoService {
 
     try {
       const repo = await this.prisma.githubRepo.create({
-        data: { githubRepoName: info.fullName, githubRepoUrl: info.htmlUrl },
+        data: repoData(info),
       });
       return toResponse(repo);
     } catch (error) {
@@ -69,7 +78,7 @@ export class RepoService {
     try {
       const repo = await this.prisma.githubRepo.update({
         where: { id },
-        data: { githubRepoName: info.fullName, githubRepoUrl: info.htmlUrl },
+        data: repoData(info),
       });
       return toResponse(repo);
     } catch (error) {

@@ -6,6 +6,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { toCommitCheck } from './check-view';
 import { GithubReviewClient } from './github-review.client';
 import { ReviewRunner } from './review.runner';
+import { submissionInclude, toSubmission } from './submission-view';
 import { REVIEW_ACTIONS, type PullRequestEvent } from './webhook-payload';
 
 /** What the webhook did with a delivery, returned to GitHub for the delivery log. */
@@ -105,28 +106,9 @@ export class ReviewService implements OnModuleInit {
     const pulls = await this.prisma.pullRequest.findMany({
       where: { issueId },
       orderBy: { openedAt: 'desc' },
-      include: { reviews: { include: reviewInclude, orderBy: { createdAt: 'desc' } } },
+      include: submissionInclude,
     });
-    return pulls.map((pr) => {
-      // Reviews are listed newest first; the one for the current head commit is what the app shows.
-      const review = pr.reviews.find((r) => r.headSha === pr.headSha);
-      const check = toCommitCheck(review);
-      return {
-        id: pr.id,
-        prNumber: pr.number,
-        title: pr.title,
-        url: pr.url,
-        author: { login: pr.authorLogin, avatarUrl: pr.authorAvatarUrl },
-        state: pr.state,
-        headSha: pr.headSha,
-        check,
-        ci: review?.ciState ? { state: review.ciState, failedJobs: review.failedJobs } : null,
-        retryableReviewId: review && check.state === 'error' ? review.id : null,
-        reviewedAt: review?.completedAt?.toISOString() ?? null,
-        openedAt: pr.openedAt.toISOString(),
-        updatedAt: pr.updatedAt.toISOString(),
-      };
-    });
+    return pulls.map(toSubmission);
   }
 
   /** Runs a review again. Only for reviews that ended in an error, so it cannot be used to spend money on a good result. */

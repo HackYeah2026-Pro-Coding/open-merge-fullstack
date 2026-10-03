@@ -3,6 +3,8 @@ import { OAUTH_STATE_TTL_MS, SESSION_TTL_MS } from './auth-tokens';
 
 export const SESSION_COOKIE = 'om_session';
 export const OAUTH_COOKIE = 'om_oauth';
+/** Separate from the session, so leaving the owner view keeps the developer signed in. */
+export const OWNER_COOKIE = 'om_owner';
 
 /** The OAuth nonce only travels with the sign-in routes. */
 const OAUTH_COOKIE_PATH = '/api/auth/github';
@@ -21,6 +23,14 @@ export function setSessionCookie(res: Response, token: string, secure: boolean):
 
 export function clearSessionCookie(res: Response, secure: boolean): void {
   res.clearCookie(SESSION_COOKIE, options(secure));
+}
+
+export function setOwnerCookie(res: Response, token: string, secure: boolean): void {
+  res.cookie(OWNER_COOKIE, token, { ...options(secure), maxAge: SESSION_TTL_MS });
+}
+
+export function clearOwnerCookie(res: Response, secure: boolean): void {
+  res.clearCookie(OWNER_COOKIE, options(secure));
 }
 
 export function setOAuthCookie(res: Response, nonce: string, secure: boolean): void {

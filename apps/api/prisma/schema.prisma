@@ -49,6 +49,9 @@ model GithubRepo {
   /// "owner/name", as GitHub shows it.
   githubRepoName String @unique
   githubRepoUrl  String
+  /// Copied from GitHub when the repo is added or updated.
+  description    String?
+  isPrivate      Boolean @default(false)
 
   createdAt DateTime @default(now()) @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @db.Timestamptz(3)

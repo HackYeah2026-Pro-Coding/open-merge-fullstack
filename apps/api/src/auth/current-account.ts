@@ -1,6 +1,7 @@
 import {
   type CanActivate,
   type ExecutionContext,
+  ForbiddenException,
   Injectable,
   UnauthorizedException,
   createParamDecorator,
@@ -8,8 +9,8 @@ import {
 import { ConfigService } from '@nestjs/config';
 import type { Request } from 'express';
 import type { Env } from '../config/env';
-import { readSessionToken } from './auth-tokens';
-import { SESSION_COOKIE, readCookie } from './cookies';
+import { readOwnerToken, readSessionToken } from './auth-tokens';
+import { OWNER_COOKIE, SESSION_COOKIE, readCookie } from './cookies';
 import { InvalidTokenError } from './signed-token';
 
 /** Lets a request through only with a valid session cookie from GitHub sign-in. */
@@ -25,6 +26,24 @@ export class AccountGuard implements CanActivate {
       request.githubLogin = readSessionToken(token, this.config.get('SESSION_SECRET', { infer: true })).githubLogin;
     } catch (error) {
       if (error instanceof InvalidTokenError) throw new UnauthorizedException('Your session expired. Sign in again.');
+      throw error;
+    }
+    return true;
+  }
+}
+
+/** Lets a request through only while the owner view is open. */
+@Injectable()
+export class OwnerGuard implements CanActivate {
+  constructor(private readonly config: ConfigService<Env, true>) {}
+
+  canActivate(context: ExecutionContext): boolean {
+    const token = readCookie(context.switchToHttp().getRequest<Request>(), OWNER_COOKIE);
+    if (!token) throw new ForbiddenException('Open the owner view first.');
+    try {
+      readOwnerToken(token, this.config.get('SESSION_SECRET', { infer: true }));
+    } catch (error) {
+      if (error instanceof InvalidTokenError) throw new ForbiddenException('The owner view expired. Open it again.');
       throw error;
     }
     return true;

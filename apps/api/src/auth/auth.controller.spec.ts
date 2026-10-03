@@ -4,8 +4,8 @@ import type { Env } from '../config/env';
 import type { PrismaService } from '../prisma/prisma.service';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
-import { createSessionToken, readOAuthState, readSessionToken } from './auth-tokens';
-import { OAUTH_COOKIE, SESSION_COOKIE } from './cookies';
+import { createOwnerToken, createSessionToken, readOAuthState, readOwnerToken, readSessionToken } from './auth-tokens';
+import { OAUTH_COOKIE, OWNER_COOKIE, SESSION_COOKIE } from './cookies';
 import { GithubOAuthError, type GithubOAuthService } from './github-oauth.service';
 
 const SECRET = 's'.repeat(32);
@@ -22,9 +22,15 @@ function setup() {
     githubAccount: {
       upsert: jest.fn().mockResolvedValue(ACCOUNT),
       findUnique: jest.fn().mockResolvedValue({ ...ACCOUNT, wallet: null }),
+      findFirst: jest.fn().mockResolvedValue(null),
     },
   };
-  const values: Record<string, string> = { SESSION_SECRET: SECRET, NODE_ENV: 'development', WEB_ORIGIN: WEB };
+  const values: Record<string, string> = {
+    SESSION_SECRET: SECRET,
+    NODE_ENV: 'development',
+    WEB_ORIGIN: WEB,
+    GITHUB_OWNER_LOGIN: 'acme-owner',
+  };
   const config = { get: (key: string) => values[key] } as unknown as ConfigService<Env, true>;
   const auth = new AuthService(github as unknown as GithubOAuthService, prisma as unknown as PrismaService, config);
   return { controller: new AuthController(auth, config), github, prisma };
@@ -172,7 +178,65 @@ describe('AuthController', () => {
   it('signs out by clearing the session cookie', () => {
     const { controller } = setup();
     const res = fakeRes();
-    controller.signOut(asRes(res));
+    controller.signOut(reqWith(), asRes(res));
     expect(res.clearCookie).toHaveBeenCalledWith(SESSION_COOKIE, expect.objectContaining({ path: '/' }));
+  });
+
+  describe('owner view', () => {
+    const OWNER = {
+      id: 'owner:acme-owner',
+      githubLogin: 'acme-owner',
+      name: null,
+      avatarUrl: 'https://github.com/acme-owner.png',
+      role: 'maintainer',
+      wallet: null,
+    };
+
+    it('opens with a signed owner cookie', () => {
+      const { controller } = setup();
+      const res = fakeRes();
+      controller.openOwnerView(asRes(res));
+      const token = res.cookie.mock.calls.find(([name]) => name === OWNER_COOKIE)?.[1] as string;
+      expect(readOwnerToken(token, SECRET)).toMatchObject({ kind: 'owner' });
+      expect(res.cookie).toHaveBeenCalledWith(OWNER_COOKIE, token, expect.objectContaining({ httpOnly: true, path: '/' }));
+    });
+
+    it('answers the session with the configured owner over the developer session', async () => {
+      const { controller } = setup();
+      const cookies = { [OWNER_COOKIE]: createOwnerToken(SECRET), [SESSION_COOKIE]: createSessionToken(ACCOUNT, SECRET) };
+      await expect(controller.session(reqWith(cookies), asRes(fakeRes()))).resolves.toEqual({ user: OWNER });
+    });
+
+    it("uses the owner's account when they have signed in before, without a wallet", async () => {
+      const { controller, prisma } = setup();
+      prisma.githubAccount.findFirst.mockResolvedValueOnce({
+        ...ACCOUNT,
+        githubLogin: 'acme-owner',
+        wallet: { address: 'addr', linkedAt: new Date() },
+      });
+      const { user } = await controller.session(reqWith({ [OWNER_COOKIE]: createOwnerToken(SECRET) }), asRes(fakeRes()));
+      expect(user).toMatchObject({ id: 'acc1', githubLogin: 'acme-owner', name: 'Ada', role: 'maintainer', wallet: null });
+    });
+
+    it('drops a forged owner cookie and falls back to the developer session', async () => {
+      const { controller } = setup();
+      const res = fakeRes();
+      const cookies = {
+        [OWNER_COOKIE]: createOwnerToken('o'.repeat(32)),
+        [SESSION_COOKIE]: createSessionToken(ACCOUNT, SECRET),
+      };
+      const { user } = await controller.session(reqWith(cookies), asRes(res));
+      expect(user).toMatchObject({ githubLogin: 'ada', role: 'developer' });
+      expect(res.clearCookie).toHaveBeenCalledWith(OWNER_COOKIE, expect.anything());
+    });
+
+    it('leaving it keeps the developer signed in', () => {
+      const { controller } = setup();
+      const res = fakeRes();
+      const cookies = { [OWNER_COOKIE]: createOwnerToken(SECRET), [SESSION_COOKIE]: createSessionToken(ACCOUNT, SECRET) };
+      controller.signOut(reqWith(cookies), asRes(res));
+      expect(res.clearCookie).toHaveBeenCalledWith(OWNER_COOKIE, expect.anything());
+      expect(res.clearCookie).not.toHaveBeenCalledWith(SESSION_COOKIE, expect.anything());
+    });
   });
 });

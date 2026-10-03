@@ -13,6 +13,8 @@ export interface CreateIssueInput {
   /** Integer base units of the reward token. */
   rewardAmount: bigint;
   repoId: string;
+  /** Also applied to the GitHub issue. */
+  labels?: string[];
 }
 
 export interface IssueResponse {
@@ -95,6 +97,7 @@ export class IssueService {
         data: {
           title: input.title,
           body: input.body,
+          labels: input.labels,
           rewardAmount: input.rewardAmount,
           rewardSymbol: DEFAULT_REWARD_SYMBOL,
           githubRepoId: input.repoId,
@@ -135,7 +138,8 @@ export class IssueService {
 
   private async openOnGithub(issue: Issue, repoName: string): Promise<Issue> {
     const [owner, repo] = repoName.split('/');
-    const opened = await this.github.createIssue({ owner, repo }, { title: issue.title, body: issue.body });
+    const labels = issue.labels.length > 0 ? { labels: issue.labels } : {};
+    const opened = await this.github.createIssue({ owner, repo }, { title: issue.title, body: issue.body, ...labels });
 
     try {
       // Only links an issue that is still unlinked, so two concurrent retries cannot overwrite each other.

@@ -8,5 +8,6 @@ import { IssueService } from './issue.service';
   imports: [GithubModule, SolanaModule],
   controllers: [IssueController],
   providers: [IssueService],
+  exports: [IssueService],
 })
 export class IssueModule {}

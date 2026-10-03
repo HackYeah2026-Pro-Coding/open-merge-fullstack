@@ -11,6 +11,11 @@ export interface SessionPayload extends SignedPayload {
   githubLogin: string;
 }
 
+/** The owner view is open in this browser. Carries no identity: the owner is configured, not signed in. */
+export interface OwnerViewPayload extends SignedPayload {
+  kind: 'owner';
+}
+
 /** The OAuth `state`: where to land after sign-in, bound to the browser by `nonce`. */
 export interface OAuthStatePayload extends SignedPayload {
   kind: 'oauth';
@@ -31,6 +36,14 @@ export function createSessionToken(
 
 export function readSessionToken(token: string, secret: string, now?: number): SessionPayload {
   return readSignedToken<SessionPayload>(token, secret, 'session', SESSION_TTL_MS, now);
+}
+
+export function createOwnerToken(secret: string, now = Date.now()): string {
+  return signToken<OwnerViewPayload>({ kind: 'owner', issuedAt: now }, secret);
+}
+
+export function readOwnerToken(token: string, secret: string, now?: number): OwnerViewPayload {
+  return readSignedToken<OwnerViewPayload>(token, secret, 'owner', SESSION_TTL_MS, now);
 }
 
 /** The nonce also goes into a short-lived cookie, so a callback only completes in the browser that started it. */

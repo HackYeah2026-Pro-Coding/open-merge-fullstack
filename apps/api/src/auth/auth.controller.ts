@@ -18,11 +18,14 @@ import type { Env } from '../config/env';
 import { AuthService } from './auth.service';
 import {
   OAUTH_COOKIE,
+  OWNER_COOKIE,
   SESSION_COOKIE,
   clearOAuthCookie,
+  clearOwnerCookie,
   clearSessionCookie,
   readCookie,
   setOAuthCookie,
+  setOwnerCookie,
   setSessionCookie,
 } from './cookies';
 import { GithubOAuthError } from './github-oauth.service';
@@ -93,19 +96,35 @@ export class AuthController {
     return { url: `${this.webOrigin}${state.next}` };
   }
 
+  /** The owner while the owner view is open, otherwise the signed-in developer. */
   @Get('session')
   async session(@Req() req: Request, @Res({ passthrough: true }) res: Response): Promise<Session> {
+    const ownerToken = readCookie(req, OWNER_COOKIE);
+    if (this.auth.isOwnerView(ownerToken)) return { user: await this.auth.ownerUser() };
+    if (ownerToken) clearOwnerCookie(res, this.secure);
+
     const token = readCookie(req, SESSION_COOKIE);
     const user = await this.auth.userForSession(token);
     if (token && !user) clearSessionCookie(res, this.secure);
     return { user };
   }
 
-  /** Sessions are stateless, so signing out is clearing the cookie. */
+  /** Opens the owner view on top of the developer session, which stays as it was. */
+  @Post('owner')
+  @HttpCode(204)
+  openOwnerView(@Res({ passthrough: true }) res: Response): void {
+    setOwnerCookie(res, this.auth.ownerToken(), this.secure);
+  }
+
+  /**
+   * Leaves the owner view when it is open, back to the developer session;
+   * otherwise signs the developer out. Sessions are stateless, so both clear a cookie.
+   */
   @Post('sign-out')
   @HttpCode(204)
-  signOut(@Res({ passthrough: true }) res: Response): void {
-    clearSessionCookie(res, this.secure);
+  signOut(@Req() req: Request, @Res({ passthrough: true }) res: Response): void {
+    if (readCookie(req, OWNER_COOKIE)) clearOwnerCookie(res, this.secure);
+    else clearSessionCookie(res, this.secure);
   }
 
   private signInPage(error: SignInError, next?: string): RedirectTo {

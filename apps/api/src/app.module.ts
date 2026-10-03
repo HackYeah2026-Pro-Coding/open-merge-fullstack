@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { validateEnv } from './config/env';
 import { AuthModule } from './auth/auth.module';
+import { BountyModule } from './bounty/bounty.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { HealthModule } from './health/health.module';
 import { SolanaModule } from './solana/solana.module';
@@ -30,6 +31,7 @@ import { WalletModule } from './wallet/wallet.module';
     WalletModule,
     IssueModule,
     ReviewModule,
+    BountyModule,
     // Feature modules go here.
   ],
 })

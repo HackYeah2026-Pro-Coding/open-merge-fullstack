@@ -36,6 +36,12 @@ export const envSchema = z.object({
   // public repos only, 60 requests an hour.
   GITHUB_TOKEN: z.string().optional(),
 
+  // The GitHub organization whose repositories carry bounties, and the single
+  // account shown as its owner. The owner is required in production; development
+  // falls back to the organization name.
+  GITHUB_ORG: z.string().trim().min(1).default('HackYeah2026-Pro-Coding'),
+  GITHUB_OWNER_LOGIN: z.string().trim().optional(),
+
   // Solana escrow, off until SERVER_WALLET_KEYPAIR_B64 is set (POST /issue answers
   // 503 meanwhile). The values are cross-checked in src/config/escrow-env.ts.
   SOLANA_RPC_URL: z.string().url().default('https://api.devnet.solana.com'),
@@ -67,7 +73,8 @@ type Resolved =
   | 'WALLET_CHALLENGE_SECRET'
   | 'SESSION_SECRET'
   | 'GITHUB_CLIENT_ID'
-  | 'GITHUB_CLIENT_SECRET';
+  | 'GITHUB_CLIENT_SECRET'
+  | 'GITHUB_OWNER_LOGIN';
 
 /** DATABASE_URL is derived from DB_TARGET rather than set directly. */
 export type Env = Omit<z.infer<typeof envSchema>, Resolved> & {
@@ -76,6 +83,7 @@ export type Env = Omit<z.infer<typeof envSchema>, Resolved> & {
   SESSION_SECRET: string;
   GITHUB_CLIENT_ID?: string;
   GITHUB_CLIENT_SECRET?: string;
+  GITHUB_OWNER_LOGIN: string;
 };
 
 function configError(issue: string): Error {
@@ -116,6 +124,7 @@ export function validateEnv(raw: Record<string, unknown>): Env {
     SESSION_SECRET,
     GITHUB_CLIENT_ID,
     GITHUB_CLIENT_SECRET,
+    GITHUB_OWNER_LOGIN,
     ...rest
   } = result.data;
   const production = rest.NODE_ENV === 'production';
@@ -131,6 +140,11 @@ export function validateEnv(raw: Record<string, unknown>): Env {
     throw configError(
       'GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET: required in production',
     );
+  }
+
+  const ownerLogin = GITHUB_OWNER_LOGIN || undefined;
+  if (production && !ownerLogin) {
+    throw configError('GITHUB_OWNER_LOGIN: required in production');
   }
 
   const escrowIssue = escrowEnvIssue(rest, production);
@@ -157,5 +171,6 @@ export function validateEnv(raw: Record<string, unknown>): Env {
     ),
     GITHUB_CLIENT_ID: clientId,
     GITHUB_CLIENT_SECRET: clientSecret,
+    GITHUB_OWNER_LOGIN: ownerLogin ?? rest.GITHUB_ORG,
   };
 }
