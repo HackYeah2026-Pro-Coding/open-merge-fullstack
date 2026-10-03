@@ -7,10 +7,12 @@ import {
 import { Prisma } from '../generated/prisma/client';
 import type { GithubService } from '../github/github.service';
 import type { PrismaService } from '../prisma/prisma.service';
+import type { EscrowService } from '../solana/escrow.service';
 import { IssueService } from './issue.service';
 
 describe('IssueService', () => {
   const createdAt = new Date('2026-10-03T12:00:00.000Z');
+  const locked = { escrowAddress: 'Esc1111111111111111111111111111111111111111', signature: 'sig_1' };
   const input = {
     title: 'Fix flaky login test',
     body: 'Fails one run in ten.',
@@ -37,15 +39,20 @@ describe('IssueService', () => {
         htmlUrl: 'https://github.com/acme/widgets/issues/42',
       }),
     };
+    const escrow = {
+      assertConfigured: jest.fn(),
+      lockReward: jest.fn().mockResolvedValue(locked),
+    };
     const service = new IssueService(
       prisma as unknown as PrismaService,
       github as unknown as GithubService,
+      escrow as unknown as EscrowService,
     );
-    return { service, prisma, github };
+    return { service, prisma, github, escrow };
   }
 
-  it('stores the issue in OMT, opens it on GitHub and links the two', async () => {
-    const { service, prisma, github } = setup();
+  it('locks the reward in escrow, stores the issue in OMT, opens it on GitHub and links the two', async () => {
+    const { service, prisma, github, escrow } = setup();
     prisma.issue.update.mockResolvedValue({
       id: 'issue_1',
       title: input.title,
@@ -56,6 +63,9 @@ describe('IssueService', () => {
       githubRepoId: 'repo_1',
       githubIssueNumber: 42,
       githubIssueUrl: 'https://github.com/acme/widgets/issues/42',
+      escrowAddress: locked.escrowAddress,
+      escrowSignature: locked.signature,
+      escrowStatus: 'FUNDED',
       paidOutToId: null,
       paidOutAt: null,
       closedAt: null,
@@ -72,11 +82,15 @@ describe('IssueService', () => {
       repoId: 'repo_1',
       githubIssueNumber: 42,
       githubIssueUrl: 'https://github.com/acme/widgets/issues/42',
+      escrowAddress: locked.escrowAddress,
+      escrowSignature: locked.signature,
+      escrowStatus: 'FUNDED',
       paidOutToId: null,
       paidOutAt: null,
       closedAt: null,
       createdAt: createdAt.toISOString(),
     });
+    expect(escrow.lockReward).toHaveBeenCalledWith(input.rewardAmount);
     expect(prisma.issue.create).toHaveBeenCalledWith({
       data: {
         title: input.title,
@@ -84,6 +98,9 @@ describe('IssueService', () => {
         rewardAmount: input.rewardAmount,
         rewardSymbol: 'OMT',
         githubRepoId: 'repo_1',
+        escrowAddress: locked.escrowAddress,
+        escrowSignature: locked.signature,
+        escrowStatus: 'FUNDED',
       },
     });
     expect(github.createIssue).toHaveBeenCalledWith(
@@ -96,14 +113,35 @@ describe('IssueService', () => {
     });
   });
 
-  it('saves nothing when no GitHub token is configured', async () => {
-    const { service, prisma, github } = setup();
+  it('locks and saves nothing when no GitHub token is configured', async () => {
+    const { service, prisma, github, escrow } = setup();
     github.assertCanCreateIssues.mockImplementation(() => {
       throw new ServiceUnavailableException();
     });
 
     await expect(service.create(input)).rejects.toBeInstanceOf(ServiceUnavailableException);
+    expect(escrow.lockReward).not.toHaveBeenCalled();
     expect(prisma.issue.create).not.toHaveBeenCalled();
+  });
+
+  it('locks and saves nothing when escrow is not configured', async () => {
+    const { service, prisma, escrow } = setup();
+    escrow.assertConfigured.mockImplementation(() => {
+      throw new ServiceUnavailableException();
+    });
+
+    await expect(service.create(input)).rejects.toBeInstanceOf(ServiceUnavailableException);
+    expect(escrow.lockReward).not.toHaveBeenCalled();
+    expect(prisma.issue.create).not.toHaveBeenCalled();
+  });
+
+  it('saves nothing and opens nothing on GitHub when locking the reward fails', async () => {
+    const { service, prisma, github, escrow } = setup();
+    escrow.lockReward.mockRejectedValue(new BadGatewayException());
+
+    await expect(service.create(input)).rejects.toBeInstanceOf(BadGatewayException);
+    expect(prisma.issue.create).not.toHaveBeenCalled();
+    expect(github.createIssue).not.toHaveBeenCalled();
   });
 
   it('keeps the saved bounty unlinked and reports the error when GitHub fails', async () => {
@@ -115,11 +153,12 @@ describe('IssueService', () => {
     expect(prisma.issue.update).not.toHaveBeenCalled();
   });
 
-  it('returns not found for an unknown repo without saving anything', async () => {
-    const { service, prisma, github } = setup();
+  it('returns not found for an unknown repo without locking or saving anything', async () => {
+    const { service, prisma, github, escrow } = setup();
     prisma.githubRepo.findUnique.mockResolvedValue(null);
 
     await expect(service.create(input)).rejects.toBeInstanceOf(NotFoundException);
+    expect(escrow.lockReward).not.toHaveBeenCalled();
     expect(prisma.issue.create).not.toHaveBeenCalled();
     expect(github.createIssue).not.toHaveBeenCalled();
   });
@@ -151,6 +190,9 @@ describe('IssueService', () => {
     githubRepoId: 'repo_1',
     githubIssueNumber: 7,
     githubIssueUrl: 'https://github.com/acme/widgets/issues/7',
+    escrowAddress: locked.escrowAddress,
+    escrowSignature: locked.signature,
+    escrowStatus: 'FUNDED',
     paidOutToId: 'account_1',
     paidOutAt: createdAt,
     closedAt: null,
@@ -166,6 +208,9 @@ describe('IssueService', () => {
     repoId: 'repo_1',
     githubIssueNumber: 7,
     githubIssueUrl: 'https://github.com/acme/widgets/issues/7',
+    escrowAddress: locked.escrowAddress,
+    escrowSignature: locked.signature,
+    escrowStatus: 'FUNDED',
     paidOutToId: 'account_1',
     paidOutAt: createdAt.toISOString(),
     closedAt: null,

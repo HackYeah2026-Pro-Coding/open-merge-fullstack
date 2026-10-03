@@ -14,6 +14,9 @@ import { z } from 'zod';
 import { ZodValidationPipe } from '../core/pipes/zod-validation.pipe';
 import { IssueService, type IssueResponse } from './issue.service';
 
+/** Largest amount the escrow program accepts (its `amount` argument is a u64). */
+const U64_MAX = 2n ** 64n - 1n;
+
 const createIssueSchema = z.object({
   title: z.string().trim().min(1),
   body: z.string(),
@@ -23,7 +26,8 @@ const createIssueSchema = z.object({
       z.string().regex(/^[1-9]\d*$/, 'Expected a positive integer in base units'),
       z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
     ])
-    .transform((value) => BigInt(value)),
+    .transform((value) => BigInt(value))
+    .refine((value) => value <= U64_MAX, `Must be at most ${U64_MAX} base units`),
   repoId: z.string().min(1),
 });
 type CreateIssueBody = z.output<typeof createIssueSchema>;
@@ -63,14 +67,18 @@ export class IssueController {
       },
     },
   })
-  @ApiCreatedResponse({ description: 'Issue stored with its reward and opened on GitHub.' })
+  @ApiCreatedResponse({
+    description: 'Reward locked in a new Solana escrow, issue stored with the escrow address and opened on GitHub.',
+  })
   @ApiBadRequestResponse({ description: 'The body is invalid.' })
   @ApiNotFoundResponse({ description: 'No repository with this id.' })
   @ApiBadGatewayResponse({
     description:
-      'GitHub refused to open the issue. The bounty is saved without a GitHub issue; retry with POST /issue/:id/github.',
+      'Locking the reward on Solana failed and nothing is saved, or GitHub refused to open the issue and the funded bounty is saved without one; retry that with POST /issue/:id/github.',
   })
-  @ApiServiceUnavailableResponse({ description: 'GITHUB_TOKEN is not set. Nothing is saved.' })
+  @ApiServiceUnavailableResponse({
+    description: 'GITHUB_TOKEN or SERVER_WALLET_KEYPAIR_B64 is not set. Nothing is saved.',
+  })
   create(
     @Body(new ZodValidationPipe(createIssueSchema)) body: CreateIssueBody,
   ): Promise<IssueResponse> {

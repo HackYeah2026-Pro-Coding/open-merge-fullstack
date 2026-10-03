@@ -1,7 +1,8 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma, type Issue } from '../generated/prisma/client';
+import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { EscrowStatus, Prisma, type Issue } from '../generated/prisma/client';
 import { GithubService } from '../github/github.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { EscrowService } from '../solana/escrow.service';
 
 /** Every bounty is paid in the project's own token for now. */
 export const DEFAULT_REWARD_SYMBOL = 'OMT';
@@ -26,6 +27,10 @@ export interface IssueResponse {
   /** Null when the bounty was saved but opening it on GitHub failed. */
   githubIssueNumber: number | null;
   githubIssueUrl: string | null;
+  /** Base58 address of the on-chain escrow holding the reward. */
+  escrowAddress: string | null;
+  escrowSignature: string | null;
+  escrowStatus: EscrowStatus;
   paidOutToId: string | null;
   paidOutAt: string | null;
   closedAt: string | null;
@@ -43,6 +48,9 @@ function toResponse(issue: Issue): IssueResponse {
     repoId: issue.githubRepoId,
     githubIssueNumber: issue.githubIssueNumber,
     githubIssueUrl: issue.githubIssueUrl,
+    escrowAddress: issue.escrowAddress,
+    escrowSignature: issue.escrowSignature,
+    escrowStatus: issue.escrowStatus,
     paidOutToId: issue.paidOutToId,
     paidOutAt: issue.paidOutAt?.toISOString() ?? null,
     closedAt: issue.closedAt?.toISOString() ?? null,
@@ -52,9 +60,12 @@ function toResponse(issue: Issue): IssueResponse {
 
 @Injectable()
 export class IssueService {
+  private readonly logger = new Logger(IssueService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly github: GithubService,
+    private readonly escrow: EscrowService,
   ) {}
 
   async list(): Promise<IssueResponse[]> {
@@ -73,8 +84,10 @@ export class IssueService {
     const repo = await this.prisma.githubRepo.findUnique({ where: { id: input.repoId } });
     if (!repo) throw new NotFoundException(`Repository ${input.repoId} does not exist`);
     this.github.assertCanCreateIssues();
+    this.escrow.assertConfigured();
 
-    // TODO(solana): lock input.rewardAmount in escrow before saving. Assumed to succeed for now.
+    // A failure here propagates before anything is saved.
+    const locked = await this.escrow.lockReward(input.rewardAmount);
 
     let issue: Issue;
     try {
@@ -85,9 +98,17 @@ export class IssueService {
           rewardAmount: input.rewardAmount,
           rewardSymbol: DEFAULT_REWARD_SYMBOL,
           githubRepoId: input.repoId,
+          escrowAddress: locked.escrowAddress,
+          escrowSignature: locked.signature,
+          escrowStatus: EscrowStatus.FUNDED,
         },
       });
     } catch (error) {
+      // The reward is locked but nothing records where; the log is the only trace.
+      this.logger.error(
+        `Reward locked in escrow ${locked.escrowAddress} (tx ${locked.signature}) but the issue was not saved; cancel the escrow to refund it`,
+        error instanceof Error ? error.stack : String(error),
+      );
       // The repo was deleted between the check above and this write.
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
         throw new NotFoundException(`Repository ${input.repoId} does not exist`);
