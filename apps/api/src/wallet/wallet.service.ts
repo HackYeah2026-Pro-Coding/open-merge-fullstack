@@ -2,13 +2,12 @@ import { BadRequestException, ConflictException, Injectable, NotFoundException }
 import { ConfigService } from '@nestjs/config';
 import type { LinkWalletInput, User, WalletChallenge } from '@escrow/shared';
 import type { Env } from '../config/env';
+import { toUser } from '../auth/to-user';
 import { PrismaService } from '../prisma/prisma.service';
 import { CHALLENGE_TTL_MS, buildMessage, createChallengeToken, readChallengeToken } from './challenge';
 import { parseSolanaAddress, verifyWalletSignature } from './verify-signature';
 
 const WITH_WALLET = { include: { wallet: true } } as const;
-
-type AccountWithWallet = NonNullable<Awaited<ReturnType<WalletService['findAccount']>>>;
 
 /**
  * Links a wallet to a GitHub account by proof of ownership. It only records an
@@ -68,7 +67,7 @@ export class WalletService {
       await this.dropOrphan(tx, account.walletId, wallet.id);
       return result;
     });
-    return this.toUser(updated);
+    return toUser(updated);
   }
 
   async unlink(githubLogin: string): Promise<User> {
@@ -82,7 +81,7 @@ export class WalletService {
       await this.dropOrphan(tx, account.walletId, null);
       return result;
     });
-    return this.toUser(updated);
+    return toUser(updated);
   }
 
   /** A wallet row nobody points at is dead weight; payouts keep their own copy of the address. */
@@ -98,19 +97,6 @@ export class WalletService {
     const account = await this.prisma.githubAccount.findUnique({ where: { githubLogin }, ...WITH_WALLET });
     if (!account) throw new NotFoundException(`No account for @${githubLogin}.`);
     return account;
-  }
-
-  private toUser(account: AccountWithWallet): User {
-    return {
-      id: account.id,
-      githubLogin: account.githubLogin,
-      name: account.name,
-      avatarUrl: account.avatarUrl,
-      role: 'developer',
-      wallet: account.wallet
-        ? { address: account.wallet.address, linkedAt: account.wallet.linkedAt.toISOString() }
-        : null,
-    };
   }
 
   private assertAddress(address: string): void {

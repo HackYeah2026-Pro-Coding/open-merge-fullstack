@@ -25,6 +25,9 @@ export interface Session {
   user: User | null;
 }
 
+/** Why GitHub sign-in sent the browser back to /sign-in, as the `error` query parameter. */
+export type SignInError = 'access_denied' | 'state_mismatch' | 'github';
+
 /** Message the user signs with their wallet to prove they own the address. */
 export interface WalletChallenge {
   nonce: string;

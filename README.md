@@ -204,6 +204,8 @@ Environment variables on the service:
 | `DATABASE_URL` | the Supabase **session pooler** string |
 | `WEB_ORIGIN` | origin of the deployed frontend, for CORS |
 | `NODE_ENV` | `production` |
+| `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | a production GitHub OAuth App with callback `https://<web-domain>/api/auth/github/callback` |
+| `SESSION_SECRET` | at least 32 random characters (`openssl rand -hex 32`); signs session cookies |
 
 `DATABASE_URL` wins over `DB_TARGET` whenever it is set, so a deployed container
 needs exactly one database variable and the local `local`/`supabase` switch stays
