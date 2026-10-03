@@ -12,7 +12,7 @@ export interface TokenMetadataResponse {
 }
 
 // Resolves from dist/solana at runtime to apps/api/public.
-const TOKEN_IMAGE_PATH = path.resolve(__dirname, "../../public/token-logo.png");
+const TOKEN_IMAGE_PATH = path.resolve(__dirname, "../../public/logo-token.png");
 
 @Controller("solana")
 export class SolanaController {

@@ -1,6 +1,5 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Prisma } from '../generated/prisma/client';
-import type { PayoutService } from '../payout/payout.service';
 import type { PrismaService } from '../prisma/prisma.service';
 import type { GithubReviewClient } from './github-review.client';
 import type { ReviewRunner } from './review.runner';
@@ -42,14 +41,12 @@ function setup() {
   };
   const github = { closingIssueNumbers: jest.fn().mockResolvedValue([7]) };
   const runner = { run: jest.fn().mockResolvedValue(undefined) };
-  const payouts = { releaseForMerge: jest.fn().mockResolvedValue('released') };
   const service = new ReviewService(
     prisma as unknown as PrismaService,
     github as unknown as GithubReviewClient,
     runner as unknown as ReviewRunner,
-    payouts as unknown as PayoutService,
   );
-  return { service, prisma, github, runner, payouts };
+  return { service, prisma, github, runner };
 }
 
 describe('ReviewService.handlePullRequest', () => {
@@ -111,44 +108,13 @@ describe('ReviewService.handlePullRequest', () => {
     await expect(service.handlePullRequest(event())).rejects.toThrow('connection lost');
   });
 
-  it('only records a pull request closed without merging, paying and reviewing nothing', async () => {
-    const { service, prisma, runner, payouts } = setup();
-    await expect(service.handlePullRequest(event({ action: 'closed' }))).resolves.toBe('updated');
-    expect(prisma.pullRequest.updateMany).toHaveBeenCalledWith({
-      where: { githubRepoId: 'repo_1', number: 12 },
-      data: { state: 'closed' },
-    });
-    expect(payouts.releaseForMerge).not.toHaveBeenCalled();
+  it.each([false, true])('ignores a closed pull request (merged: %s), leaving merges to the merge webhook', async (merged) => {
+    const { service, prisma, github, runner } = setup();
+    await expect(service.handlePullRequest(event({ action: 'closed' }, { merged }))).resolves.toBe('ignored');
+    expect(prisma.pullRequest.updateMany).not.toHaveBeenCalled();
+    expect(prisma.pullRequest.upsert).not.toHaveBeenCalled();
+    expect(github.closingIssueNumbers).not.toHaveBeenCalled();
     expect(runner.run).not.toHaveBeenCalled();
-  });
-
-  it('marks a merged pull request and pays its author, not whoever merged it', async () => {
-    const { service, prisma, runner, payouts } = setup();
-    await expect(service.handlePullRequest(event({ action: 'closed' }, { merged: true }))).resolves.toBe('releasing');
-    expect(prisma.pullRequest.updateMany).toHaveBeenCalledWith({
-      where: { githubRepoId: 'repo_1', number: 12 },
-      data: { state: 'merged' },
-    });
-    expect(payouts.releaseForMerge).toHaveBeenCalledWith('issue_1', { githubId: 501, login: 'ada' });
-    expect(runner.run).not.toHaveBeenCalled();
-  });
-
-  it('pays a merged pull request that was never reviewed, finding its issue on GitHub', async () => {
-    const { service, prisma, github, payouts } = setup();
-    prisma.pullRequest.updateMany.mockResolvedValueOnce({ count: 0 });
-    prisma.pullRequest.findUnique.mockResolvedValueOnce(null);
-    await expect(service.handlePullRequest(event({ action: 'closed' }, { merged: true }))).resolves.toBe('releasing');
-    expect(github.closingIssueNumbers).toHaveBeenCalledWith({ owner: 'Acme', repo: 'widgets' }, 12);
-    expect(payouts.releaseForMerge).toHaveBeenCalledWith('issue_1', { githubId: 501, login: 'ada' });
-  });
-
-  it('pays nothing for a merged pull request that closes no bounty', async () => {
-    const { service, prisma, github, payouts } = setup();
-    prisma.pullRequest.updateMany.mockResolvedValueOnce({ count: 0 });
-    prisma.pullRequest.findUnique.mockResolvedValueOnce(null);
-    github.closingIssueNumbers.mockResolvedValueOnce([]);
-    await expect(service.handlePullRequest(event({ action: 'closed' }, { merged: true }))).resolves.toBe('ignored');
-    expect(payouts.releaseForMerge).not.toHaveBeenCalled();
   });
 });
 
