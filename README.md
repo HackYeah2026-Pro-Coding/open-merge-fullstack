@@ -1,6 +1,19 @@
-# Escrow
+# OpenMerge
 
-project template
+**Paid bounties for open-source issues. Merge the pull request, and the developer gets paid.**
+
+Open source runs on unpaid work. Maintainers can't easily pay for a fix, and
+contributors have no guarantee they'll be paid when they deliver one. OpenMerge
+fixes both sides of that:
+
+1. **Post a bounty.** The maintainer sets a reward, and OpenMerge opens the matching GitHub issue and locks the money in escrow.
+2. **Open a pull request.** Any developer can pick up the issue and submit a fix.
+3. **Get a review.** Two AI reviewers and the tests check the PR. The verdict shows up on the commit like any other CI check.
+4. **Merge to pay.** When the maintainer merges, the reward goes straight to the developer's wallet.
+
+**Neither side has to trust the other, or us.** The reward is held by an on-chain
+program on Solana, not by our backend. It pays out only on merge, and our server
+cannot move the funds. To users it's just GitHub: issues, pull requests and checks.
 
 ## Stack
 
