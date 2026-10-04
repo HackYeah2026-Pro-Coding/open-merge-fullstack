@@ -16,8 +16,14 @@ visible on screen has to look and behave like a finished product.
 5. On merge the reward is released to the developer's wallet, whatever the check said. The check informs the maintainer's decision to merge; it never gates the payout.
 
 The rule that shapes everything: **the party that holds the money must not be the one
-deciding who gets it.** Release conditions are enforced by an on-chain program, never by
-our backend. Backend code must not gain the ability to move funds.
+deciding who gets it.** The reward sits in a vault owned by the on-chain escrow program,
+which allows one release or cancel per escrow, for the full amount, signed only by the
+verifier key stored at creation, and refunds only the funder.
+
+Current state, so nobody overstates it: for the hackathon the API holds both the server
+wallet that funds every escrow and the verifier key (`apps/api/src/solana/escrow.service.ts`),
+and it picks the recipient on merge. Do not add new code paths that move funds; the goal is
+to take the verifier key out of the backend.
 
 ## Who owns what
 
@@ -26,18 +32,20 @@ our backend. Backend code must not gain the ability to move funds.
 | Frontend, backend API, database, GitHub login, bounty CRUD, wallet linking | this repo's main author |
 | GitHub webhooks and the blockchain / escrow side | teammate |
 
-The on-chain and webhook parts sit behind interfaces so the app works end to end on
-mocks before the real implementation lands. **Do not edit the teammate's areas or change
-those interfaces without asking.** This file deliberately says nothing about how the
-on-chain side works.
+The on-chain program (`anchor/`) and the API's Solana client are implemented; the web app
+can still run on an in-browser mock of the API (`VITE_API_MODE=mock`). **Do not edit the
+teammate's areas or change those interfaces without asking.** How the program works is
+documented in `anchor/README.md`.
 
 ## Repository
 
 ```
+anchor/          escrow program (Anchor, Solana devnet)
 apps/api/        NestJS + Prisma 7.9.1 + PostgreSQL
 apps/web/        Vite + React + Tailwind 4
 packages/shared/ types shared by both
 scripts/         database target switching helpers
+demo/            demo scenario driven by `pnpm demo:*`
 ```
 
 The package scope `@escrow/*` is a placeholder from before the name was chosen. Leave it
@@ -55,9 +63,13 @@ pnpm test
 pnpm db:target      # local or supabase
 pnpm use:local      # / pnpm use:supabase
 pnpm db:migrate
+pnpm demo:status    # demo take, see demo/README.md
 ```
 
 Run `pnpm typecheck` and `pnpm test` before handing work back.
+
+Configuration, database switching and Prisma 7 details are in `docs/development.md`;
+Render and Vercel deployment in `docs/deployment.md`.
 
 ### Backend notes
 
