@@ -21,13 +21,13 @@ export interface PublishResult {
   v2: string;
 }
 
-interface Commit {
+export interface Commit {
   sha: string;
   tree: string;
 }
 
 /** Writes files as one commit through the git data API, so no local checkout is needed. */
-async function commitFiles(
+export async function commitFiles(
   api: GithubApi,
   base: string,
   files: RepoFile[],
@@ -50,19 +50,17 @@ async function commitFiles(
 }
 
 /** Makes sure the developer can push to the repo; an outside account has to accept an invitation first. */
-async function ensureDeveloperAccess(deps: PublishDeps, base: string): Promise<void> {
-  if (!deps.dev) return;
-  const { admin, dev, org, scenario, log } = deps;
+export async function ensureDeveloperAccess(admin: GithubApi, dev: GithubApi, org: string, name: string, log: Log): Promise<void> {
   const developer = await dev.request<{ login: string }>('GET', '/user');
   const invitation = await admin.request<{ html_url?: string } | undefined>(
     'PUT',
-    `${base}/collaborators/${encodeURIComponent(developer.login)}`,
+    `${repoPath(org, name)}/collaborators/${encodeURIComponent(developer.login)}`,
     { permission: 'push' },
   );
   if (invitation?.html_url) {
-    log(`Invited @${developer.login}. Accept at https://github.com/${org}/${scenario.repo.name}/invitations while signed in as them.`);
+    log(`Invited @${developer.login}. Accept at https://github.com/${org}/${name}/invitations while signed in as them.`);
   } else {
-    log(`@${developer.login} can push to the repository.`);
+    log(`@${developer.login} can push to ${org}/${name}.`);
   }
 }
 
@@ -101,6 +99,6 @@ export async function publish(deps: PublishDeps): Promise<PublishResult> {
   await setRef(admin, base, `heads/${repo.default_branch}`, baseline.sha, true);
   log(`${repo.default_branch} is at the baseline ${shortSha(baseline.sha)}; tags ${scenario.refs.v1} ${shortSha(v1.sha)}, ${scenario.refs.v2} ${shortSha(v2.sha)}`);
 
-  await ensureDeveloperAccess(deps, base);
+  if (dev) await ensureDeveloperAccess(admin, dev, org, name, log);
   return { baseline: baseline.sha, v1: v1.sha, v2: v2.sha };
 }

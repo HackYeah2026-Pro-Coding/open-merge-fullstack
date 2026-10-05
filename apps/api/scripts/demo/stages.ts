@@ -19,11 +19,15 @@ export interface RepoFile {
 
 const REPO_DIR = path.join(DEMO_DIR, 'repo');
 
+/** Folders that are never part of the demo repo's content: a local checkout or install inside a stage. */
+const SKIPPED_DIRS = new Set(['.git', 'node_modules']);
+
 /** The files a stage adds or replaces. Text only: they travel to GitHub as UTF-8. */
 export function stageFiles(stage: Stage, repoDir: string = REPO_DIR): RepoFile[] {
   const dir = path.join(repoDir, stage);
   return fs
     .readdirSync(dir, { recursive: true, encoding: 'utf8' })
+    .filter((entry) => !entry.split(path.sep).some((part) => SKIPPED_DIRS.has(part)))
     .filter((entry) => fs.statSync(path.join(dir, entry)).isFile())
     .map((entry) => ({ path: entry.split(path.sep).join('/'), content: fs.readFileSync(path.join(dir, entry), 'utf8') }))
     .sort((a, b) => a.path.localeCompare(b.path));

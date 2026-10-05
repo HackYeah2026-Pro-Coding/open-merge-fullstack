@@ -11,6 +11,8 @@ export interface BountyDeps {
   /** Base URL of the running API. */
   apiUrl: string;
   scenario: Scenario;
+  /** Repository of the organization to put the bounty on; the scenario's repo when absent. */
+  repoName?: string;
   fetchFn?: typeof fetch;
   log: Log;
 }
@@ -35,7 +37,7 @@ interface IssueResponse {
 export async function createBounty(deps: BountyDeps): Promise<CreatedBounty> {
   const { db, org, apiUrl, scenario, log } = deps;
   const fetchFn = deps.fetchFn ?? fetch;
-  const repo = await requireRepoRow(db, org, scenario.repo.name);
+  const repo = await requireRepoRow(db, org, deps.repoName ?? scenario.repo.name);
 
   if ((await db.issue.count({ where: { githubRepoId: repo.id } })) > 0) {
     throw new UsageError('The demo repo already has a bounty. Run: pnpm demo:reset --yes');

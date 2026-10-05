@@ -7,6 +7,7 @@ import { runFiller } from './filler';
 import { GithubClient } from './github-api';
 import { log } from './log';
 import { ORPHANED_ESCROWS_FILE } from './paths';
+import { prepare } from './prepare';
 import { publish } from './publish';
 import { mergePullRequest, openPullRequest, pushFix } from './pull-request';
 import { reset } from './reset';
@@ -15,13 +16,17 @@ import { loadScenario } from './scenario';
 import { collectStatus, formatStatus } from './status';
 import type { PrismaClient } from '../../src/generated/prisma/client';
 
-export const COMMANDS = ['publish', 'reset', 'bounty', 'pr', 'fix', 'merge', 'status', 'filler'] as const;
+export const COMMANDS = ['prepare', 'publish', 'reset', 'bounty', 'pr', 'fix', 'merge', 'status', 'filler'] as const;
 export type Command = (typeof COMMANDS)[number];
 
 export const isCommand = (value: string | undefined): value is Command => COMMANDS.includes(value as Command);
 
 export const USAGE = `Usage: pnpm demo:<command> [flags]
 
+Live presentation:
+  prepare --yes     before every take: re-create the live repo and its twin, each with the fix on a branch
+
+Full take on one repo:
   publish --yes     create or refresh the demo repo and pin its three code states (once, or when demo/repo changes)
   reset --yes       back to "before step 1": no bounty or pull request, main at the baseline
   bounty            step 1 fallback: create the bounty through the API
@@ -70,6 +75,32 @@ export async function runCommand(command: Command, options: RunOptions): Promise
   const slug = `${org}/${scenario.repo.name}`;
 
   switch (command) {
+    case 'prepare': {
+      requireYes(options.yes, [
+        `Database: ${describeDbTarget()}`,
+        `This DELETES the GitHub repositories ${slug} and ${org}/${scenario.live.twinRepo} with all their issues and pull requests`,
+        'and creates them again, removes their bounties from the database, and locks a new reward for the twin.',
+      ]);
+      const admin = new GithubClient(requireToken(env, 'admin'));
+      const dev = new GithubClient(requireToken(env, 'dev'));
+      const bot = new GithubClient(requireToken(env, 'bot'));
+      await withDb((db) =>
+        prepare({
+          db,
+          admin,
+          dev,
+          bot,
+          org,
+          scenario,
+          apiUrl: env.apiUrl,
+          webUrl: env.webUrl,
+          orphanFile: ORPHANED_ESCROWS_FILE,
+          sleep: DEFAULT_WAIT.sleep,
+          log,
+        }),
+      );
+      return;
+    }
     case 'publish': {
       requireYes(options.yes, [
         `This force-moves the default branch of ${slug} to the baseline and re-points the tags`,

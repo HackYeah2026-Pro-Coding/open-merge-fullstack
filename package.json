@@ -26,6 +26,7 @@
     "db:seed": "pnpm --filter @escrow/api run db:seed",
     "prisma:generate": "pnpm --filter @escrow/api run prisma:generate",
     "demo": "pnpm --filter @escrow/api run demo",
+    "demo:prepare": "pnpm --filter @escrow/api run demo prepare",
     "demo:publish": "pnpm --filter @escrow/api run demo publish",
     "demo:reset": "pnpm --filter @escrow/api run demo reset",
     "demo:bounty": "pnpm --filter @escrow/api run demo bounty",

@@ -8,9 +8,13 @@
  * @param {number} totalCents what the bill comes to, in cents
  * @param {number} people how many people share it
  * @returns {number[]} what each person pays, in cents
- * @throws {RangeError} when `people` is not a positive integer
+ * @throws {RangeError} when `totalCents` is not a whole, non-negative number of cents,
+ *   or `people` is not a positive integer
  */
 export function splitBill(totalCents, people) {
+  if (!Number.isInteger(totalCents) || totalCents < 0) {
+    throw new RangeError(`totalCents must be a non-negative integer, got ${totalCents}`);
+  }
   if (!Number.isInteger(people) || people < 1) {
     throw new RangeError(`people must be a positive integer, got ${people}`);
   }

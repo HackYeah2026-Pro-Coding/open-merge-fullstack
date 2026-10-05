@@ -32,11 +32,24 @@ function run(stage: Stage) {
     }
     let rejectsZero = false;
     try { splitBill(1000, 0); } catch (error) { rejectsZero = error instanceof RangeError; }
-    console.log(JSON.stringify({ example: splitBill(10000, 3), exact, spread, rejectsZero }));
+    const rejectsTotal = (total) => { try { splitBill(total, 3); return false; } catch (error) { return error instanceof RangeError; } };
+    const rejectsBadTotals = [-1000, -1, 10.5].every(rejectsTotal);
+    console.log(JSON.stringify({ example: splitBill(10000, 3), exact, spread, rejectsZero, rejectsBadTotals }));
   `;
   const out = execFileSync(process.execPath, ['--input-type=module', '-e', probe], { cwd: dir, encoding: 'utf8' });
-  return { testsPass, ...(JSON.parse(out) as { example: number[]; exact: boolean; spread: boolean; rejectsZero: boolean }) };
+  return { testsPass, ...(JSON.parse(out) as { example: number[]; exact: boolean; spread: boolean; rejectsZero: boolean; rejectsBadTotals: boolean }) };
 }
+
+describe('stageFiles', () => {
+  it('leaves out a git checkout or an install inside a stage, which GitHub refuses as tree paths', () => {
+    const repoDir = fs.mkdtempSync(path.join(os.tmpdir(), 'stage-files-'));
+    for (const file of ['base/src/a.js', 'base/.git/HEAD', 'base/.git/refs/heads/main', 'base/node_modules/x/index.js', 'base/.github/workflows/ci.yml']) {
+      fs.mkdirSync(path.dirname(path.join(repoDir, file)), { recursive: true });
+      fs.writeFileSync(path.join(repoDir, file), 'x');
+    }
+    expect(stageFiles('base', repoDir).map((f) => f.path)).toEqual(['.github/workflows/ci.yml', 'src/a.js']);
+  });
+});
 
 describe('the demo repository stages', () => {
   it('layers the stages: later ones replace earlier files and keep the rest', () => {
@@ -73,5 +86,7 @@ describe('the demo repository stages', () => {
     expect(result.exact).toBe(true);
     expect(result.spread).toBe(true);
     expect(result.rejectsZero).toBe(true);
+    // Reviewers caught this one: a negative or fractional total used to break the sum.
+    expect(result.rejectsBadTotals).toBe(true);
   });
 });

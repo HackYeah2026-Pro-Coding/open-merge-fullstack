@@ -19,6 +19,8 @@ const scenarioSchema = z.object({
     bodyFile: name,
   }),
   pullRequest: z.object({ title: name, bodyFile: name }),
+  /** The live presentation: a repo re-created fresh for every take, and its twin with a pull request reviewed in advance. */
+  live: z.object({ twinRepo: name, twinDescription: z.string() }),
 });
 
 type Parsed = z.infer<typeof scenarioSchema>;

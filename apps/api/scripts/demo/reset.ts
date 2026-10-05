@@ -19,9 +19,8 @@ export interface ResetDeps {
   log: Log;
 }
 
-/** Deletes the repo's bounty rows, first writing down every escrow that still holds a reward. */
-async function removeBounties(deps: ResetDeps, repoId: string, repoName: string): Promise<void> {
-  const { db, orphanFile, log } = deps;
+/** Deletes a repo's bounty rows, first writing down every escrow that still holds a reward. */
+export async function removeBounties(db: PrismaClient, repoId: string, repoName: string, orphanFile: string, log: Log): Promise<void> {
   const locked = await db.issue.findMany({
     where: { githubRepoId: repoId, escrowStatus: EscrowStatus.FUNDED, escrowAddress: { not: null } },
   });
@@ -37,7 +36,7 @@ async function removeBounties(deps: ResetDeps, repoId: string, repoName: string)
       })),
     );
     const total = formatTokens(locked.reduce((sum, issue) => sum + issue.rewardAmount, 0n));
-    log(`WARNING: ${locked.length} escrow(s) holding ${total} were never released and are now unreferenced; addresses are in ${orphanFile}`);
+    log(`WARNING: ${locked.length} escrow(s) of ${repoName} holding ${total} were never released and are now unreferenced; addresses are in ${orphanFile}`);
   }
   await deleteBounties(db, { githubRepoId: repoId });
 }
@@ -57,7 +56,7 @@ export async function reset(deps: ResetDeps): Promise<void> {
   const baselineSha = await requireTagSha(admin, base, scenario.refs.baseline);
   const row = await upsertRepoRow(db, repo);
 
-  await removeBounties(deps, row.id, repo.full_name);
+  await removeBounties(db, row.id, repo.full_name, deps.orphanFile, log);
   log('Database: bounties, pull requests, reviews and payouts of the repo removed');
 
   const cleared = await clearRepo(admin, org, name, repo.default_branch);

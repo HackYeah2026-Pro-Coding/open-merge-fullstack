@@ -43,3 +43,9 @@ test('rejects a number of people that is not a positive integer', () => {
     assert.throws(() => splitBill(1000, people), RangeError, `people = ${people}`);
   }
 });
+
+test('rejects a total that is not a whole, non-negative number of cents', () => {
+  for (const totalCents of [-1, -1000, 10.5, Number.NaN]) {
+    assert.throws(() => splitBill(totalCents, 3), RangeError, `totalCents = ${totalCents}`);
+  }
+});

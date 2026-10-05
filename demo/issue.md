@@ -41,7 +41,8 @@ Collected              $100.00   ✓
 ## Acceptance criteria
 
 - `splitBill(10000, 3)` returns `[3334, 3333, 3333]`
-- For any total and number of people, the shares add up to the total exactly
+- For any valid total and number of people, the shares add up to the total exactly
 - No two shares differ by more than one cent
+- A total that is not a whole, non-negative number of cents (`-1000`, `10.5`) throws a `RangeError`
 - A number of people that is not a positive integer (`0`, `-1`, `2.5`) throws a `RangeError`
 - Tests cover the cases above

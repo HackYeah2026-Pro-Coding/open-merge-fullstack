@@ -17,12 +17,19 @@
   "branch": "fix/split-remainder",
   "bounty": {
     "title": "Shares don't add up to the total when splitting a bill",
-    "labels": ["bug", "good first issue"],
+    "labels": [
+      "bug",
+      "good first issue"
+    ],
     "rewardTokens": 50,
     "bodyFile": "issue.md"
   },
   "pullRequest": {
     "title": "fix: make split shares add up to the total",
     "bodyFile": "pull-request.md"
+  },
+  "live": {
+    "twinRepo": "fair-split-twin",
+    "twinDescription": "Twin of fair-split with the pull request reviewed in advance."
   }
 }

@@ -18,6 +18,7 @@ const envSchema = z.object({
   DEMO_DEV_TOKEN: text,
   DEMO_API_URL: text,
   API_URL: text,
+  WEB_ORIGIN: text,
   CLAUDE_REVIEW_MODEL: text,
   GEMINI_MODEL: text,
 });
@@ -37,6 +38,8 @@ export interface DemoEnv {
   org: string;
   /** Base URL of the running API, without a trailing slash. */
   apiUrl: string;
+  /** Base URL of the web app, for links the demo prints. */
+  webUrl: string;
   tokens: Partial<Record<TokenRole, string>>;
   models: { claude: string; gemini: string };
 }
@@ -50,6 +53,7 @@ export function loadDemoEnv(raw: NodeJS.ProcessEnv = process.env): DemoEnv {
   return {
     org: env.GITHUB_ORG,
     apiUrl: (env.DEMO_API_URL ?? env.API_URL ?? 'http://localhost:3000').replace(/\/+$/, ''),
+    webUrl: (env.WEB_ORIGIN ?? 'http://localhost:5173').replace(/\/+$/, ''),
     tokens: { bot: env.GITHUB_TOKEN, admin: env.DEMO_ADMIN_TOKEN, dev: env.DEMO_DEV_TOKEN },
     models: { claude: env.CLAUDE_REVIEW_MODEL ?? 'claude-opus-5-5', gemini: env.GEMINI_MODEL ?? 'gemini-pro' },
   };
